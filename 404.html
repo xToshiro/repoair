@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 - Partícula Perdida | RepoAir</title>
+    <link rel="stylesheet" href="css/style.css"> <!-- Reutiliza o CSS principal -->
+    <style>
+        /* Estilos específicos para a página de erro */
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            text-align: center;
+            overflow: hidden; /* Esconde scrollbars */
+        }
+        .error-container {
+            padding: 20px;
+            max-width: 600px;
+        }
+        .error-icon {
+            font-size: 5rem;
+            display: inline-block;
+            animation: float 4s ease-in-out infinite;
+        }
+        .error-container h1 {
+            font-size: 8rem;
+            color: var(--primary-color);
+            margin: 0;
+            line-height: 1;
+        }
+        .error-container h2 {
+            font-size: 1.5rem;
+            margin-top: 1rem;
+            margin-bottom: 1rem;
+        }
+        /* Animação para o ícone flutuar */
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+            100% { transform: translateY(0px); }
+        }
+    </style>
+</head>
+<body>
+    <div id="particles-js"></div> <!-- Mantém o fundo de partículas -->
+    <div class="error-container">
+        <div class="error-icon">💨</div>
+        <h1>404</h1>
+        <h2>Oops! Parece que esta partícula se perdeu na atmosfera.</h2>
+        <p>A página que você está procurando não foi encontrada ou foi movida.</p>
+        <br>
+        <a href="index.html" class="cta-btn">Voltar para a Base</a>
+    </div>
+    <!-- Scripts para o fundo funcionar -->
+    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+    <script src="js/script.js"></script>
+</body>
+</html>

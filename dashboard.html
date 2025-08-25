@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - RepoAir</title>
+    
+    <!-- Google Fonts: Poppins -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" xintegrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="auth-page">
+    <!-- Language and Theme controls -->
+    <div class="page-controls">
+        <div class="lang-switcher">
+            <button data-lang="pt">PT</button>
+            <span>|</span>
+            <button data-lang="en">EN</button>
+        </div>
+        <button id="theme-switcher" class="theme-btn" aria-label="Alternar tema">
+            <i class="fas fa-moon"></i>
+            <i class="fas fa-sun"></i>
+        </button>
+    </div>
+
+    <!-- Wrapper for all auth content -->
+    <div class="auth-wrapper">
+        <!-- Logo Area -->
+        <div class="logo-area">
+            <a href="https://www.trama.det.ufc.br/" target="_blank" class="trama-logo">
+                <img src="assets/images/trama-logo-verde.png" alt="Logo TRAMA - Tema Claro" class="logo-light" onerror="this.onerror=null;this.src='https://placehold.co/140x50/00A86B/FFFFFF?text=TRAMA';">
+                <img src="assets/images/trama-logo-branco.png" alt="Logo TRAMA - Tema Escuro" class="logo-dark" onerror="this.onerror=null;this.src='https://placehold.co/140x50/FFFFFF/121212?text=TRAMA';">
+            </a>
+            <a href="index.html" class="logo">
+                <h1>RepoAir</h1>
+            </a>
+        </div>
+
+        <!-- Authentication Container -->
+        <div class="auth-container">
+            <!-- Login Form -->
+            <div id="login-form" class="auth-form active">
+                <h2 data-lang-pt="Bem-vindo de volta!" data-lang-en="Welcome back!">Bem-vindo de volta!</h2>
+                <form>
+                    <div class="input-group">
+                        <i class="fas fa-envelope"></i>
+                        <input type="email" placeholder="Email" required>
+                    </div>
+                    <div class="input-group">
+                        <i class="fas fa-lock"></i>
+                        <input type="password" placeholder="Senha" required>
+                    </div>
+                    <button type="submit" class="auth-btn" data-lang-pt="Entrar" data-lang-en="Sign In">Entrar</button>
+                </form>
+                <p class="form-switcher">
+                    <a href="#" id="show-reset" data-lang-pt="Esqueceu a senha?" data-lang-en="Forgot password?">Esqueceu a senha?</a>
+                </p>
+                <p class="form-switcher">
+                    <span data-lang-pt="Não tem uma conta?" data-lang-en="Don't have an account?">Não tem uma conta?</span>
+                    <a href="#" id="show-register" data-lang-pt="Crie uma aqui" data-lang-en="Create one here">Crie uma aqui</a>.
+                </p>
+            </div>
+
+            <!-- Register Form -->
+            <div id="register-form" class="auth-form">
+                <h2 data-lang-pt="Crie sua Conta" data-lang-en="Create Your Account">Crie sua Conta</h2>
+                <form>
+                    <div class="input-group">
+                        <i class="fas fa-envelope"></i>
+                        <input type="email" placeholder="Email" required>
+                    </div>
+                    <div class="input-group">
+                        <i class="fas fa-lock"></i>
+                        <input type="password" placeholder="Senha" required>
+                    </div>
+                     <div class="input-group">
+                        <i class="fas fa-lock"></i>
+                        <input type="password" placeholder="Confirme a Senha" required>
+                    </div>
+                    <button type="submit" class="auth-btn" data-lang-pt="Registrar" data-lang-en="Register">Registrar</button>
+                </form>
+                <p class="form-switcher">
+                    <span data-lang-pt="Já tem uma conta?" data-lang-en="Already have an account?">Já tem uma conta?</span>
+                    <a href="#" id="show-login-from-register" data-lang-pt="Faça login" data-lang-en="Sign in">Faça login</a>.
+                </p>
+            </div>
+
+            <!-- Password Reset Form -->
+            <div id="reset-form" class="auth-form">
+                <h2 data-lang-pt="Redefinir Senha" data-lang-en="Reset Password">Redefinir Senha</h2>
+                <p class="reset-info" data-lang-pt="Digite seu e-mail e enviaremos um link para redefinir sua senha." data-lang-en="Enter your email and we'll send you a link to reset your password.">Digite seu e-mail e enviaremos um link para redefinir sua senha.</p>
+                <form>
+                    <div class="input-group">
+                        <i class="fas fa-envelope"></i>
+                        <input type="email" placeholder="Email" required>
+                    </div>
+                    <button type="submit" class="auth-btn" data-lang-pt="Enviar Link" data-lang-en="Send Link">Enviar Link</button>
+                </form>
+                <p class="form-switcher">
+                    <a href="#" id="show-login-from-reset" data-lang-pt="Voltar para o Login" data-lang-en="Back to Login">Voltar para o Login</a>.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Script and Auth Logic -->
+    <script src="js/script.js"></script>
+    <script src="js/auth.js"></script>
+</body>
+</html>

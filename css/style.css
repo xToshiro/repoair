@@ -229,6 +229,12 @@ body.dark-theme .theme-btn .fa-sun { display: block; }
     cursor: pointer;
 }
 
+/* Hide mobile dashboard button by default */
+.mobile-dashboard-item {
+    display: none;
+}
+
+
 /* --- Main Content Sections --- */
 main {
     padding-top: 90px; /* Adjusted Header height */
@@ -360,6 +366,24 @@ footer a:hover {
 
     #hero {
         min-height: calc(100vh - 75px);
+    }
+
+    /* Show and style mobile dashboard button */
+    .mobile-dashboard-item {
+        display: block;
+        padding: 1rem;
+    }
+    .dashboard-btn-mobile {
+        display: inline-block;
+        padding: 0.6rem 1.2rem;
+        background-color: var(--primary-color);
+        color: white !important; /* Override nav link color */
+        border-radius: 8px;
+        font-weight: 600;
+    }
+    .dashboard-btn-mobile:hover {
+        background-color: var(--secondary-color);
+        color: white !important;
     }
 }
 

@@ -340,19 +340,14 @@ footer a:hover {
         font-size: 2.5rem;
     }
 
-    /* MOBILE HEADER FIX: Hide non-essential buttons and resize logo */
+    /* MOBILE HEADER FIX: Hide non-essential buttons and TRAMA logo */
     .header-actions .lang-switcher,
     .header-actions .dashboard-btn {
         display: none;
     }
 
     .trama-logo {
-        width: 100px;
-        height: 35px;
-    }
-
-    .trama-logo img {
-        height: 35px;
+        display: none;
     }
 
     .logo-area {

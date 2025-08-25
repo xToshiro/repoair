@@ -45,17 +45,20 @@
 
         <!-- Authentication Container -->
         <div class="auth-container">
+            <!-- Message Area -->
+            <p id="auth-message" class="auth-message"></p>
+            
             <!-- Login Form -->
             <div id="login-form" class="auth-form active">
                 <h2 data-lang-pt="Bem-vindo de volta!" data-lang-en="Welcome back!">Bem-vindo de volta!</h2>
-                <form>
+                <form id="login-form-element">
                     <div class="input-group">
                         <i class="fas fa-envelope"></i>
-                        <input type="email" placeholder="Email" required>
+                        <input type="email" id="login-email" placeholder="Email" required value="">
                     </div>
                     <div class="input-group">
                         <i class="fas fa-lock"></i>
-                        <input type="password" placeholder="Senha" required>
+                        <input type="password" id="login-password" placeholder="Senha" required value="">
                     </div>
                     <button type="submit" class="auth-btn" data-lang-pt="Entrar" data-lang-en="Sign In">Entrar</button>
                 </form>
@@ -68,7 +71,7 @@
                 </p>
             </div>
 
-            <!-- Register Form -->
+            <!-- Register Form (Structure only) -->
             <div id="register-form" class="auth-form">
                 <h2 data-lang-pt="Crie sua Conta" data-lang-en="Create Your Account">Crie sua Conta</h2>
                 <form>
@@ -92,7 +95,7 @@
                 </p>
             </div>
 
-            <!-- Password Reset Form -->
+            <!-- Password Reset Form (Structure only) -->
             <div id="reset-form" class="auth-form">
                 <h2 data-lang-pt="Redefinir Senha" data-lang-en="Reset Password">Redefinir Senha</h2>
                 <p class="reset-info" data-lang-pt="Digite seu e-mail e enviaremos um link para redefinir sua senha." data-lang-en="Enter your email and we'll send you a link to reset your password.">Digite seu e-mail e enviaremos um link para redefinir sua senha.</p>

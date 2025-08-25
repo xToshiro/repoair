@@ -8,6 +8,8 @@
     --header-bg: rgba(255, 255, 255, 0.7);
     --shadow-color: rgba(0, 0, 0, 0.1);
     --border-color: rgba(0, 0, 0, 0.1);
+    --error-color: #e74c3c;
+    --success-color: #2ecc71;
 }
 
 body.dark-theme {
@@ -500,4 +502,17 @@ footer a:hover {
     font-size: 0.9rem;
     margin-bottom: 1.5rem;
     opacity: 0.8;
+}
+
+/* --- Auth Message Styling --- */
+.auth-message {
+    min-height: 20px;
+    margin-bottom: 1rem;
+    font-weight: 600;
+}
+.auth-message.error {
+    color: var(--error-color);
+}
+.auth-message.success {
+    color: var(--success-color);
 }

@@ -47,7 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify({ email, password })
             });
 
-            if (response.ok) {
+            if (response.ok) { // Status 200-299
                 const data = await response.json();
                 authMessage.textContent = 'Login bem-sucedido!';
                 authMessage.classList.add('success');
@@ -62,13 +62,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 }, 1500);
 
             } else {
-                authMessage.textContent = 'Credenciais inválidas. Tente novamente.';
+                // Handle specific HTTP errors
+                if (response.status === 401) { // Unauthorized
+                    authMessage.textContent = 'Credenciais inválidas. Tente novamente.';
+                } else {
+                    authMessage.textContent = `Erro no servidor: ${response.status}`;
+                }
                 authMessage.classList.add('error');
             }
 
         } catch (error) {
+            // This error is often a CORS issue or a network failure.
+            // CORS must be configured on the server (onrender.com) to allow requests from your website's domain.
             console.error('Login error:', error);
-            authMessage.textContent = 'Erro de conexão. Verifique sua internet.';
+            authMessage.textContent = 'Erro de conexão. Verifique a internet ou as permissões da API (CORS).';
             authMessage.classList.add('error');
         } finally {
             // Restore button state

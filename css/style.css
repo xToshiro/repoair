@@ -98,6 +98,7 @@ body {
     position: relative;
     width: 140px; /* Use the actual width of your logo */
     height: 50px;  /* Use the actual height of your logo */
+    transition: width 0.3s ease, height 0.3s ease;
 }
 
 .trama-logo img {
@@ -105,7 +106,7 @@ body {
     position: absolute;
     top: 0;
     left: 0;
-    transition: opacity 0.3s ease;
+    transition: opacity 0.3s ease, height 0.3s ease;
 }
 
 .trama-logo:hover .logo-light,
@@ -337,6 +338,33 @@ footer a:hover {
     }
     .hero-content h2 {
         font-size: 2.5rem;
+    }
+
+    /* MOBILE HEADER FIX: Hide non-essential buttons and resize logo */
+    .header-actions .lang-switcher,
+    .header-actions .dashboard-btn {
+        display: none;
+    }
+
+    .trama-logo {
+        width: 100px;
+        height: 35px;
+    }
+
+    .trama-logo img {
+        height: 35px;
+    }
+
+    .logo-area {
+        gap: 1rem;
+    }
+
+    main {
+        padding-top: 75px;
+    }
+
+    #hero {
+        min-height: calc(100vh - 75px);
     }
 }
 

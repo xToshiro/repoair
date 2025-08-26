@@ -31,16 +31,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const email = document.getElementById('login-email').value;
         const password = document.getElementById('login-password').value;
         const submitButton = loginFormElement.querySelector('.auth-btn');
+        const currentLang = localStorage.getItem('language') || 'pt';
 
         // Reset message and show loading state
         authMessage.textContent = '';
         authMessage.className = 'auth-message';
         submitButton.disabled = true;
-        submitButton.textContent = 'Entrando...';
+        submitButton.textContent = currentLang === 'pt' ? 'Entrando...' : 'Signing in...';
 
         try {
             const response = await fetch('https://for-restful-apis-or-backend-services.onrender.com/api/login', {
                 method: 'POST',
+                mode: 'cors', // Explicitly set mode for cross-origin requests
                 headers: {
                     'Content-Type': 'application/json'
                 },
@@ -49,7 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (response.ok) { // Status 200-299
                 const data = await response.json();
-                authMessage.textContent = 'Login bem-sucedido!';
+                authMessage.textContent = currentLang === 'pt' ? 'Login bem-sucedido!' : 'Login successful!';
                 authMessage.classList.add('success');
                 
                 // Store the token for future requests
@@ -64,9 +66,9 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 // Handle specific HTTP errors
                 if (response.status === 401) { // Unauthorized
-                    authMessage.textContent = 'Credenciais inválidas. Tente novamente.';
+                    authMessage.textContent = currentLang === 'pt' ? 'Credenciais inválidas. Tente novamente.' : 'Invalid credentials. Please try again.';
                 } else {
-                    authMessage.textContent = `Erro no servidor: ${response.status}`;
+                    authMessage.textContent = `${currentLang === 'pt' ? 'Erro no servidor' : 'Server error'}: ${response.status}`;
                 }
                 authMessage.classList.add('error');
             }
@@ -75,12 +77,13 @@ document.addEventListener('DOMContentLoaded', () => {
             // This error is often a CORS issue or a network failure.
             // CORS must be configured on the server (onrender.com) to allow requests from your website's domain.
             console.error('Login error:', error);
-            authMessage.textContent = 'Erro de conexão. Verifique a internet ou as permissões da API (CORS).';
+            authMessage.textContent = currentLang === 'pt' ? 'Erro de conexão. Verifique a internet ou as permissões da API (CORS).' : 'Connection error. Check your internet or API permissions (CORS).';
             authMessage.classList.add('error');
         } finally {
-            // Restore button state
+            // Restore button state with correct language
+            const buttonText = submitButton.getAttribute(`data-lang-${currentLang}`);
             submitButton.disabled = false;
-            submitButton.textContent = 'Entrar';
+            submitButton.textContent = buttonText;
         }
     });
 });

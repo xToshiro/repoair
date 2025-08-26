@@ -600,22 +600,30 @@ footer a:hover {
     border-left-color: var(--primary-color);
 }
 
-.sidebar-credits {
-    padding: 1rem 1.5rem;
-    font-size: 0.8rem;
-    opacity: 0.7;
-    margin-top: auto;
-    text-align: center;
-    white-space: nowrap;
-}
-
 .sidebar-footer {
+    margin-top: auto;
     padding: 1.5rem;
     border-top: 1px solid var(--border-color);
     display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    flex-shrink: 0;
+}
+
+.sidebar-footer-actions {
+    display: flex;
     justify-content: space-between;
     align-items: center;
-    flex-shrink: 0;
+    width: 100%;
+}
+
+.sidebar-credits {
+    font-size: 0.8rem;
+    opacity: 0.7;
+    text-align: center;
+    white-space: nowrap;
+    line-height: 1.4;
 }
 
 .logout-btn {
@@ -645,6 +653,9 @@ footer a:hover {
     transform: rotate(180deg);
 }
 .sidebar.collapsed .sidebar-footer {
+    gap: 1rem;
+}
+.sidebar.collapsed .sidebar-footer-actions {
     flex-direction: column;
     gap: 1rem;
 }

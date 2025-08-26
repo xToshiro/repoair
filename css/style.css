@@ -89,10 +89,9 @@ body {
     text-decoration: none; 
 }
 
-.logo h1 {
-    color: var(--primary-color);
-    font-weight: 700;
-    transition: color 0.3s ease;
+.logo img {
+    height: 45px;
+    display: block;
 }
 
 /* --- BUG FIX: Use z-index to properly layer logos --- */
@@ -645,7 +644,7 @@ footer a:hover {
     width: 80px;
 }
 .sidebar.collapsed .nav-text,
-.sidebar.collapsed .logo h1,
+.sidebar.collapsed .logo,
 .sidebar.collapsed .sidebar-credits {
     display: none;
 }

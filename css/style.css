@@ -699,13 +699,19 @@ footer a:hover {
     color: var(--primary-color);
 }
 
-.map-placeholder, .chart-container, .list-placeholder {
+.map-placeholder, .chart-container, .list-placeholder, .list-container {
     min-height: 400px;
     display: flex;
     justify-content: center;
     align-items: center;
     color: var(--text-color);
     opacity: 0.7;
+}
+
+.list-container {
+    justify-content: flex-start;
+    align-items: flex-start;
+    opacity: 1;
 }
 
 .chart-container {
@@ -718,6 +724,35 @@ footer a:hover {
     grid-template-columns: 1fr 2fr;
     gap: 1.5rem;
 }
+
+/* Data Table Styling */
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+.data-table th, .data-table td {
+    padding: 0.8rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+.data-table th {
+    font-weight: 600;
+}
+.data-table .action-buttons button {
+    background: none;
+    border: none;
+    color: var(--text-color);
+    cursor: pointer;
+    font-size: 1rem;
+    margin-right: 0.5rem;
+    opacity: 0.7;
+    transition: opacity 0.3s ease;
+}
+.data-table .action-buttons button:hover {
+    opacity: 1;
+    color: var(--primary-color);
+}
+
 
 @media (max-width: 992px) {
     .management-grid {

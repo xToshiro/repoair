@@ -60,11 +60,11 @@
             <section id="overview" class="dashboard-section active">
                 <h2>Visão Geral</h2>
                 <div class="card-container">
-                    <div class="card"><h3>Monitores Ativos</h3><p class="card-value">-</p></div>
+                    <div class="card"><h3>Monitores Ativos</h3><p id="active-monitors-count" class="card-value">-</p></div>
                     <div class="card"><h3>Qualidade Média (IQA)</h3><p class="card-value">-</p></div>
                     <div class="card"><h3>Última Atualização</h3><p class="card-value">-</p></div>
                 </div>
-                <div class="map-placeholder card">
+                <div id="map-container" class="map-placeholder card">
                     <p>Mapa com a localização dos monitores aparecerá aqui.</p>
                 </div>
             </section>
@@ -76,16 +76,16 @@
                     <div class="card form-card">
                         <h3>Adicionar Novo Monitor</h3>
                         <form id="add-monitor-form">
-                            <div class="input-group"><input type="text" placeholder="ID do Monitor (ex: MOQA-01)" required></div>
-                            <div class="input-group"><input type="text" placeholder="Latitude" required></div>
-                            <div class="input-group"><input type="text" placeholder="Longitude" required></div>
+                            <div class="input-group"><input id="monitor-id" type="text" placeholder="ID do Monitor (ex: MOQA-01)" required></div>
+                            <div class="input-group"><input id="monitor-lat" type="text" placeholder="Latitude" required pattern="^-?([1-8]?[1-9]|[1-9]0)\.{1}\d{1,6}" title="Use apenas números e ponto para as coordenadas."></div>
+                            <div class="input-group"><input id="monitor-lon" type="text" placeholder="Longitude" required pattern="^-?([1-8]?[1-9]|[1-9]0)\.{1}\d{1,6}" title="Use apenas números e ponto para as coordenadas."></div>
                             <button type="submit" class="auth-btn">Adicionar Monitor</button>
                         </form>
                     </div>
                     <div class="card list-card">
                         <h3>Monitores Cadastrados</h3>
-                        <div class="list-placeholder">
-                            <p>A lista de monitores aparecerá aqui.</p>
+                        <div id="monitors-list-container" class="list-container">
+                            <!-- Monitor table will be injected here by JavaScript -->
                         </div>
                     </div>
                 </div>

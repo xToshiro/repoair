@@ -22,9 +22,10 @@
 <body>
     <div class="dashboard-layout">
         <!-- Sidebar Navigation -->
-        <aside class="sidebar">
+        <aside id="sidebar" class="sidebar">
             <div class="sidebar-header">
                 <a href="index.html" class="logo"><h1>RepoAir</h1></a>
+                <button id="sidebar-toggle" class="sidebar-toggle"><i class="fas fa-chevron-left"></i></button>
             </div>
             <nav class="sidebar-nav">
                 <ul>
@@ -50,11 +51,11 @@
             <section id="overview" class="dashboard-section active">
                 <h2>Visão Geral</h2>
                 <div class="card-container">
-                    <div class="card"><h3>Monitores Ativos</h3><p class="card-value">12</p></div>
-                    <div class="card"><h3>Qualidade Média (IQA)</h3><p class="card-value">45 (Boa)</p></div>
-                    <div class="card"><h3>Última Atualização</h3><p class="card-value">2 min atrás</p></div>
+                    <div class="card"><h3>Monitores Ativos</h3><p class="card-value">-</p></div>
+                    <div class="card"><h3>Qualidade Média (IQA)</h3><p class="card-value">-</p></div>
+                    <div class="card"><h3>Última Atualização</h3><p class="card-value">-</p></div>
                 </div>
-                <div class="map-placeholder">
+                <div class="map-placeholder card">
                     <p>Mapa com a localização dos monitores aparecerá aqui.</p>
                 </div>
             </section>
@@ -62,15 +63,33 @@
             <!-- Monitors Section -->
             <section id="monitors" class="dashboard-section">
                 <h2>Gerenciamento de Monitores</h2>
-                <p>Aqui você poderá adicionar, editar e remover os monitores da rede MoQA.</p>
-                <!-- Placeholder for monitor table -->
+                <div class="management-grid">
+                    <div class="card form-card">
+                        <h3>Adicionar Novo Monitor</h3>
+                        <form id="add-monitor-form">
+                            <div class="input-group"><input type="text" placeholder="ID do Monitor (ex: MOQA-01)" required></div>
+                            <div class="input-group"><input type="text" placeholder="Latitude" required></div>
+                            <div class="input-group"><input type="text" placeholder="Longitude" required></div>
+                            <button type="submit" class="auth-btn">Adicionar Monitor</button>
+                        </form>
+                    </div>
+                    <div class="card list-card">
+                        <h3>Monitores Cadastrados</h3>
+                        <div class="list-placeholder">
+                            <p>A lista de monitores aparecerá aqui.</p>
+                        </div>
+                    </div>
+                </div>
             </section>
 
             <!-- Analysis Section -->
             <section id="analysis" class="dashboard-section">
                 <h2>Análise de Dados</h2>
-                <p>Filtre e visualize os dados de qualidade do ar por período e monitor.</p>
-                <div class="chart-container">
+                 <div class="card">
+                    <p>Filtre e visualize os dados de qualidade do ar por período e monitor.</p>
+                    <!-- Inputs for date range filter will go here -->
+                </div>
+                <div class="chart-container card">
                     <canvas id="qualityIndexChart"></canvas>
                 </div>
             </section>
@@ -78,8 +97,22 @@
             <!-- Users Section -->
             <section id="users" class="dashboard-section">
                 <h2>Gerenciamento de Usuários</h2>
-                <p>Adicione ou remova usuários da plataforma.</p>
-                <!-- Placeholder for user table -->
+                 <div class="management-grid">
+                    <div class="card form-card">
+                        <h3>Adicionar Novo Usuário</h3>
+                        <form id="add-user-form">
+                            <div class="input-group"><input type="email" placeholder="Email do Usuário" required></div>
+                            <div class="input-group"><input type="password" placeholder="Senha" required></div>
+                            <button type="submit" class="auth-btn">Adicionar Usuário</button>
+                        </form>
+                    </div>
+                    <div class="card list-card">
+                        <h3>Usuários Cadastrados</h3>
+                        <div class="list-placeholder">
+                             <p>A lista de usuários aparecerá aqui.</p>
+                        </div>
+                    </div>
+                </div>
             </section>
         </main>
     </div>

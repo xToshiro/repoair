@@ -6,6 +6,14 @@ document.addEventListener('DOMContentLoaded', () => {
         return; // Stop script execution
     }
 
+    const sidebar = document.getElementById('sidebar');
+    const sidebarToggle = document.getElementById('sidebar-toggle');
+
+    // --- Sidebar Toggle Logic ---
+    sidebarToggle.addEventListener('click', () => {
+        sidebar.classList.toggle('collapsed');
+    });
+
     // --- Sidebar Navigation Logic ---
     const navLinks = document.querySelectorAll('.nav-link');
     const sections = document.querySelectorAll('.dashboard-section');
@@ -14,14 +22,11 @@ document.addEventListener('DOMContentLoaded', () => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
             
-            // Remove active class from all links and sections
             navLinks.forEach(l => l.classList.remove('active'));
             sections.forEach(s => s.classList.remove('active'));
 
-            // Add active class to the clicked link
             link.classList.add('active');
 
-            // Show the corresponding section
             const targetId = link.getAttribute('href').substring(1);
             document.getElementById(targetId).classList.add('active');
         });
@@ -35,8 +40,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     // --- Example Chart.js ---
-    // This is just an example to show how a chart would look.
-    // We will replace this with real API data later.
     const ctx = document.getElementById('qualityIndexChart').getContext('2d');
     const qualityIndexChart = new Chart(ctx, {
         type: 'line',
@@ -44,7 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
             labels: ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'],
             datasets: [{
                 label: 'Índice de Qualidade do Ar (IQA)',
-                data: [40, 45, 38, 52, 60, 55, 50],
+                data: [], // Start with empty data
                 backgroundColor: 'rgba(0, 168, 107, 0.2)',
                 borderColor: 'rgba(0, 168, 107, 1)',
                 borderWidth: 2,

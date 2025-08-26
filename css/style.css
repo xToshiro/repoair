@@ -307,6 +307,13 @@ footer {
     transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
+footer p {
+    margin-bottom: 0.5rem;
+}
+footer p:last-child {
+    margin-bottom: 0;
+}
+
 footer a {
     color: var(--primary-color);
     text-decoration: none;
@@ -396,6 +403,7 @@ footer a:hover {
     align-items: center;
     min-height: 100vh;
     padding: 20px;
+    position: relative;
 }
 
 .auth-wrapper {
@@ -504,6 +512,15 @@ footer a:hover {
     opacity: 0.8;
 }
 
+.auth-footer {
+    position: absolute;
+    bottom: 20px;
+    width: 100%;
+    text-align: center;
+    font-size: 0.8rem;
+    opacity: 0.7;
+}
+
 /* --- Auth Message Styling --- */
 .auth-message {
     min-height: 20px;
@@ -583,8 +600,16 @@ footer a:hover {
     border-left-color: var(--primary-color);
 }
 
-.sidebar-footer {
+.sidebar-credits {
+    padding: 1rem 1.5rem;
+    font-size: 0.8rem;
+    opacity: 0.7;
     margin-top: auto;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.sidebar-footer {
     padding: 1.5rem;
     border-top: 1px solid var(--border-color);
     display: flex;
@@ -612,7 +637,8 @@ footer a:hover {
     width: 80px;
 }
 .sidebar.collapsed .nav-text,
-.sidebar.collapsed .logo h1 {
+.sidebar.collapsed .logo h1,
+.sidebar.collapsed .sidebar-credits {
     display: none;
 }
 .sidebar.collapsed .sidebar-toggle i {

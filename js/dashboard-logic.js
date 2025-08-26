@@ -19,18 +19,10 @@ document.addEventListener('DOMContentLoaded', () => {
             'Authorization': `Bearer ${token}`
         };
 
-        const config = {
-            ...options,
-            headers: {
-                ...defaultHeaders,
-                ...options.headers,
-            },
-            mode: 'cors'
-        };
+        const config = { ...options, headers: { ...defaultHeaders, ...options.headers }, mode: 'cors' };
 
         try {
             const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
-            // Token expired or invalid
             if (response.status === 401 || response.status === 422) {
                 handleLogout();
                 return;
@@ -38,7 +30,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return response;
         } catch (error) {
             console.error('API Fetch Error:', error);
-            // Handle network errors
         }
     };
 
@@ -64,16 +55,62 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Logout Button ---
     document.getElementById('logout-btn').addEventListener('click', handleLogout);
 
+    // --- Map Logic ---
+    let map = null;
+    let mapMarkers = L.layerGroup();
+    let lightTile = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+    });
+    let darkTile = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+    });
+
+    const initMap = () => {
+        map = L.map('map').setView([-3.74, -38.53], 12); // Default to Fortaleza, CE
+        const currentTheme = document.body.classList.contains('dark-theme') ? 'dark' : 'light';
+        currentTheme === 'dark' ? darkTile.addTo(map) : lightTile.addTo(map);
+        mapMarkers.addTo(map);
+    };
+    
+    // Switch map theme along with page theme
+    document.getElementById('theme-switcher').addEventListener('click', () => {
+        setTimeout(() => { // Wait for body class to update
+            if (document.body.classList.contains('dark-theme')) {
+                map.removeLayer(lightTile);
+                darkTile.addTo(map);
+            } else {
+                map.removeLayer(darkTile);
+                lightTile.addTo(map);
+            }
+        }, 100);
+    });
+
+    const updateMapMarkers = (monitors) => {
+        mapMarkers.clearLayers();
+        if (monitors.length === 0) return;
+
+        const bounds = [];
+        monitors.forEach(monitor => {
+            const lat = parseFloat(monitor.latitude);
+            const lon = parseFloat(monitor.longitude);
+            if (!isNaN(lat) && !isNaN(lon)) {
+                const marker = L.marker([lat, lon]).bindPopup(`<b>${monitor.monitor_id}</b>`);
+                mapMarkers.addLayer(marker);
+                bounds.push([lat, lon]);
+            }
+        });
+        if(bounds.length > 0) map.fitBounds(bounds, { padding: [50, 50] });
+    };
+
     // --- Monitor Management ---
     const activeMonitorsCount = document.getElementById('active-monitors-count');
     const monitorsListContainer = document.getElementById('monitors-list-container');
     const addMonitorForm = document.getElementById('add-monitor-form');
 
     const renderMonitors = (monitors) => {
-        // Update overview card
         activeMonitorsCount.textContent = monitors.length;
+        updateMapMarkers(monitors);
 
-        // Populate monitors table
         if (monitors.length === 0) {
             monitorsListContainer.innerHTML = '<p class="list-placeholder">Nenhum monitor cadastrado.</p>';
             return;
@@ -121,33 +158,24 @@ document.addEventListener('DOMContentLoaded', () => {
     addMonitorForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const monitorId = document.getElementById('monitor-id').value;
-        // Replace comma with dot for validation
         const latitude = document.getElementById('monitor-lat').value.replace(',', '.');
         const longitude = document.getElementById('monitor-lon').value.replace(',', '.');
 
         const response = await apiFetch('/monitor', {
             method: 'POST',
-            body: JSON.stringify({
-                monitor_id: monitorId,
-                latitude: latitude,
-                longitude: longitude
-            })
+            body: JSON.stringify({ monitor_id: monitorId, latitude, longitude })
         });
 
         if (response && response.ok) {
             addMonitorForm.reset();
-            loadMonitors(); // Refresh the list
-            // Add success message later
-        } else {
-            // Add error message later
+            loadMonitors();
         }
     });
 
-
     // --- Initial Load ---
     const initializeDashboard = () => {
+        initMap();
         loadMonitors();
-        // Load other data as needed
     };
 
     initializeDashboard();
@@ -160,7 +188,7 @@ document.addEventListener('DOMContentLoaded', () => {
             labels: ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'],
             datasets: [{
                 label: 'Índice de Qualidade do Ar (IQA)',
-                data: [], // Start with empty data
+                data: [],
                 backgroundColor: 'rgba(0, 168, 107, 0.2)',
                 borderColor: 'rgba(0, 168, 107, 1)',
                 borderWidth: 2,

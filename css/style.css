@@ -699,7 +699,14 @@ footer a:hover {
     color: var(--primary-color);
 }
 
-.map-placeholder, .chart-container, .list-placeholder, .list-container {
+.map-container {
+    height: 500px;
+    border-radius: 10px;
+    overflow: hidden;
+    padding: 0 !important; /* Override card padding */
+}
+
+.map-placeholder, .list-placeholder, .list-container {
     min-height: 400px;
     display: flex;
     justify-content: center;

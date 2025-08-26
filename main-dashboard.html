@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - RepoAir</title>
+    
+    <!-- Google Fonts: Poppins -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" xintegrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    <!-- Chart.js for graphs -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="dashboard-layout">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <a href="index.html" class="logo"><h1>RepoAir</h1></a>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li><a href="#overview" class="nav-link active"><i class="fas fa-tachometer-alt"></i> <span class="nav-text">Visão Geral</span></a></li>
+                    <li><a href="#monitors" class="nav-link"><i class="fas fa-satellite-dish"></i> <span class="nav-text">Monitores</span></a></li>
+                    <li><a href="#analysis" class="nav-link"><i class="fas fa-chart-line"></i> <span class="nav-text">Análise de Dados</span></a></li>
+                    <li><a href="#users" class="nav-link"><i class="fas fa-users-cog"></i> <span class="nav-text">Usuários</span></a></li>
+                </ul>
+            </nav>
+            <div class="sidebar-footer">
+                <button id="theme-switcher" class="theme-btn" aria-label="Alternar tema">
+                    <i class="fas fa-moon"></i><i class="fas fa-sun"></i>
+                </button>
+                <button id="logout-btn" class="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i> <span class="nav-text">Sair</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Overview Section -->
+            <section id="overview" class="dashboard-section active">
+                <h2>Visão Geral</h2>
+                <div class="card-container">
+                    <div class="card"><h3>Monitores Ativos</h3><p class="card-value">12</p></div>
+                    <div class="card"><h3>Qualidade Média (IQA)</h3><p class="card-value">45 (Boa)</p></div>
+                    <div class="card"><h3>Última Atualização</h3><p class="card-value">2 min atrás</p></div>
+                </div>
+                <div class="map-placeholder">
+                    <p>Mapa com a localização dos monitores aparecerá aqui.</p>
+                </div>
+            </section>
+
+            <!-- Monitors Section -->
+            <section id="monitors" class="dashboard-section">
+                <h2>Gerenciamento de Monitores</h2>
+                <p>Aqui você poderá adicionar, editar e remover os monitores da rede MoQA.</p>
+                <!-- Placeholder for monitor table -->
+            </section>
+
+            <!-- Analysis Section -->
+            <section id="analysis" class="dashboard-section">
+                <h2>Análise de Dados</h2>
+                <p>Filtre e visualize os dados de qualidade do ar por período e monitor.</p>
+                <div class="chart-container">
+                    <canvas id="qualityIndexChart"></canvas>
+                </div>
+            </section>
+
+            <!-- Users Section -->
+            <section id="users" class="dashboard-section">
+                <h2>Gerenciamento de Usuários</h2>
+                <p>Adicione ou remova usuários da plataforma.</p>
+                <!-- Placeholder for user table -->
+            </section>
+        </main>
+    </div>
+
+    <script src="js/script.js"></script>
+    <script src="js/dashboard-logic.js"></script>
+</body>
+</html>

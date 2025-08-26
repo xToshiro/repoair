@@ -59,8 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // Redirect to the main dashboard after a short delay
                 setTimeout(() => {
-                    // We will create this page in the next step
-                    // window.location.href = 'main-dashboard.html'; 
+                    window.location.href = 'main-dashboard.html'; 
                 }, 1500);
 
             } else {

@@ -77,8 +77,8 @@
                         <h3>Adicionar Novo Monitor</h3>
                         <form id="add-monitor-form">
                             <div class="input-group"><input id="monitor-id" type="text" placeholder="ID do Monitor (ex: MOQA-01)" required></div>
-                            <div class="input-group"><input id="monitor-lat" type="text" placeholder="Latitude" required pattern="^-?([1-8]?[1-9]|[1-9]0)\.{1}\d{1,6}" title="Use apenas números e ponto para as coordenadas."></div>
-                            <div class="input-group"><input id="monitor-lon" type="text" placeholder="Longitude" required pattern="^-?([1-8]?[1-9]|[1-9]0)\.{1}\d{1,6}" title="Use apenas números e ponto para as coordenadas."></div>
+                            <div class="input-group"><input id="monitor-lat" type="text" placeholder="Latitude" required pattern="^-?\d{1,3}(\.\d+)?$" title="Use apenas números e ponto para as coordenadas (ex: -3.74)"></div>
+                            <div class="input-group"><input id="monitor-lon" type="text" placeholder="Longitude" required pattern="^-?\d{1,3}(\.\d+)?$" title="Use apenas números e ponto para as coordenadas (ex: -38.53)"></div>
                             <button type="submit" class="auth-btn">Adicionar Monitor</button>
                         </form>
                     </div>

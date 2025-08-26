@@ -11,14 +11,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const token = sessionStorage.getItem('authToken');
         if (!token) {
             handleLogout();
-            return; // Stop execution
+            return;
         }
 
-        const defaultHeaders = {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-        };
-
+        const defaultHeaders = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
         const config = { ...options, headers: { ...defaultHeaders, ...options.headers }, mode: 'cors' };
 
         try {
@@ -33,69 +29,73 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // --- Sidebar Logic ---
-    const sidebar = document.getElementById('sidebar');
-    const sidebarToggle = document.getElementById('sidebar-toggle');
-    sidebarToggle.addEventListener('click', () => sidebar.classList.toggle('collapsed'));
-
-    // --- Navigation Logic ---
-    const navLinks = document.querySelectorAll('.nav-link');
-    const sections = document.querySelectorAll('.dashboard-section');
-    navLinks.forEach(link => {
+    // --- Sidebar & Navigation Logic ---
+    document.getElementById('sidebar-toggle').addEventListener('click', () => document.getElementById('sidebar').classList.toggle('collapsed'));
+    document.querySelectorAll('.nav-link').forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
-            navLinks.forEach(l => l.classList.remove('active'));
-            sections.forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+            document.querySelectorAll('.dashboard-section').forEach(s => s.classList.remove('active'));
             link.classList.add('active');
-            const targetId = link.getAttribute('href').substring(1);
-            document.getElementById(targetId).classList.add('active');
+            document.getElementById(link.getAttribute('href').substring(1)).classList.add('active');
         });
     });
-
-    // --- Logout Button ---
     document.getElementById('logout-btn').addEventListener('click', handleLogout);
+
+    // --- Confirmation Modal Logic ---
+    const modal = document.getElementById('confirmation-modal');
+    const modalConfirmBtn = document.getElementById('modal-confirm-btn');
+    const modalCancelBtn = document.getElementById('modal-cancel-btn');
+    const modalMessage = document.getElementById('modal-message');
+
+    const showConfirmationModal = (message, onConfirm) => {
+        modalMessage.textContent = message;
+        modal.classList.add('visible');
+
+        const confirmHandler = () => {
+            onConfirm();
+            hideModal();
+        };
+
+        const hideModal = () => {
+            modal.classList.remove('visible');
+            modalConfirmBtn.removeEventListener('click', confirmHandler);
+        };
+        
+        modalConfirmBtn.addEventListener('click', confirmHandler, { once: true });
+        modalCancelBtn.addEventListener('click', hideModal, { once: true });
+    };
+
 
     // --- Map Logic ---
     let map = null;
     let mapMarkers = L.layerGroup();
-    let lightTile = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-    });
-    let darkTile = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-    });
+    let lightTile = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; OpenStreetMap &copy; CARTO' });
+    let darkTile = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; OpenStreetMap &copy; CARTO' });
 
     const initMap = () => {
-        map = L.map('map').setView([-3.74, -38.53], 12); // Default to Fortaleza, CE
-        const currentTheme = document.body.classList.contains('dark-theme') ? 'dark' : 'light';
-        currentTheme === 'dark' ? darkTile.addTo(map) : lightTile.addTo(map);
+        map = L.map('map').setView([-3.74, -38.53], 12);
+        document.body.classList.contains('dark-theme') ? darkTile.addTo(map) : lightTile.addTo(map);
         mapMarkers.addTo(map);
     };
     
-    // Switch map theme along with page theme
     document.getElementById('theme-switcher').addEventListener('click', () => {
-        setTimeout(() => { // Wait for body class to update
-            if (document.body.classList.contains('dark-theme')) {
-                map.removeLayer(lightTile);
-                darkTile.addTo(map);
-            } else {
-                map.removeLayer(darkTile);
-                lightTile.addTo(map);
-            }
+        setTimeout(() => {
+            const isDark = document.body.classList.contains('dark-theme');
+            if (isDark) { map.removeLayer(lightTile); darkTile.addTo(map); } 
+            else { map.removeLayer(darkTile); lightTile.addTo(map); }
         }, 100);
     });
 
     const updateMapMarkers = (monitors) => {
         mapMarkers.clearLayers();
         if (monitors.length === 0) return;
-
         const bounds = [];
         monitors.forEach(monitor => {
             const lat = parseFloat(monitor.latitude);
             const lon = parseFloat(monitor.longitude);
             if (!isNaN(lat) && !isNaN(lon)) {
-                const marker = L.marker([lat, lon]).bindPopup(`<b>${monitor.monitor_id}</b>`);
-                mapMarkers.addLayer(marker);
+                mapMarkers.addLayer(L.marker([lat, lon]).bindPopup(`<b>${monitor.monitor_id}</b>`));
                 bounds.push([lat, lon]);
             }
         });
@@ -106,6 +106,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const activeMonitorsCount = document.getElementById('active-monitors-count');
     const monitorsListContainer = document.getElementById('monitors-list-container');
     const addMonitorForm = document.getElementById('add-monitor-form');
+
+    const handleDeleteMonitor = (monitorId, monitorName) => {
+        showConfirmationModal(`Tem certeza que deseja deletar o monitor "${monitorName}"?`, async () => {
+            const response = await apiFetch(`/monitor/${monitorId}`, { method: 'DELETE' });
+            if (response && response.ok) {
+                loadMonitors(); // Refresh the list
+            }
+        });
+    };
 
     const renderMonitors = (monitors) => {
         activeMonitorsCount.textContent = monitors.length;
@@ -118,29 +127,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const table = document.createElement('table');
         table.className = 'data-table';
-        table.innerHTML = `
-            <thead>
-                <tr>
-                    <th>ID do Monitor</th>
-                    <th>Latitude</th>
-                    <th>Longitude</th>
-                    <th>Ações</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${monitors.map(m => `
-                    <tr>
-                        <td>${m.monitor_id}</td>
-                        <td>${m.latitude}</td>
-                        <td>${m.longitude}</td>
-                        <td class="action-buttons">
-                            <button title="Editar"><i class="fas fa-edit"></i></button>
-                            <button title="Deletar"><i class="fas fa-trash"></i></button>
-                        </td>
-                    </tr>
-                `).join('')}
-            </tbody>
-        `;
+        table.innerHTML = `<thead><tr><th>ID do Monitor</th><th>Latitude</th><th>Longitude</th><th>Ações</th></tr></thead><tbody></tbody>`;
+        const tbody = table.querySelector('tbody');
+
+        monitors.forEach(m => {
+            const row = tbody.insertRow();
+            row.innerHTML = `<td>${m.monitor_id}</td><td>${m.latitude}</td><td>${m.longitude}</td>`;
+            const actionsCell = row.insertCell();
+            actionsCell.className = 'action-buttons';
+            actionsCell.innerHTML = `<button title="Editar"><i class="fas fa-edit"></i></button>`;
+            const deleteBtn = document.createElement('button');
+            deleteBtn.title = 'Deletar';
+            deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
+            deleteBtn.onclick = () => handleDeleteMonitor(m.id, m.monitor_id);
+            actionsCell.appendChild(deleteBtn);
+        });
+
         monitorsListContainer.innerHTML = '';
         monitorsListContainer.appendChild(table);
     };

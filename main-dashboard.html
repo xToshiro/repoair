@@ -13,6 +13,9 @@
     <!-- Font Awesome for Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" xintegrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
+    <!-- Leaflet.js for Map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+
     <!-- Chart.js for graphs -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
@@ -21,10 +24,20 @@
 </head>
 <body>
     <div class="dashboard-layout">
-        <!-- Sidebar Navigation -->
+        <!-- Mobile Header -->
+        <header class="mobile-header">
+            <a href="index.html" class="logo">
+                <img src="assets/images/repologo.png" alt="RepoAir Logo">
+            </a>
+            <button id="mobile-menu-toggle" class="mobile-menu-btn"><i class="fas fa-bars"></i></button>
+        </header>
+
+        <!-- Desktop Sidebar -->
         <aside id="sidebar" class="sidebar">
             <div class="sidebar-header">
-                <a href="index.html" class="logo"><h1>RepoAir</h1></a>
+                <a href="index.html" class="logo">
+                    <img src="assets/images/repologo.png" alt="RepoAir Logo">
+                </a>
                 <button id="sidebar-toggle" class="sidebar-toggle"><i class="fas fa-chevron-left"></i></button>
             </div>
             <nav class="sidebar-nav">
@@ -35,72 +48,71 @@
                     <li><a href="#users" class="nav-link"><i class="fas fa-users-cog"></i> <span class="nav-text">Usuários</span></a></li>
                 </ul>
             </nav>
-            <div class="sidebar-credits">
-                <span class="nav-text">
-                    <p>Por <strong>Jairo Ivo</strong></p>
-                    <p>& <strong>Andrey Soares</strong></p>
-                </span>
-            </div>
             <div class="sidebar-footer">
-                <button id="theme-switcher" class="theme-btn" aria-label="Alternar tema">
-                    <i class="fas fa-moon"></i><i class="fas fa-sun"></i>
-                </button>
-                <button id="logout-btn" class="logout-btn">
-                    <i class="fas fa-sign-out-alt"></i> <span class="nav-text">Sair</span>
-                </button>
+                <div class="sidebar-footer-actions">
+                    <button id="theme-switcher" class="theme-btn" aria-label="Alternar tema">
+                        <i class="fas fa-moon"></i><i class="fas fa-sun"></i>
+                    </button>
+                    <button id="logout-btn" class="logout-btn">
+                        <i class="fas fa-sign-out-alt"></i> <span class="nav-text">Sair</span>
+                    </button>
+                </div>
+                <div class="sidebar-credits">
+                    <span class="nav-text">
+                        <p>Por <strong>Jairo Ivo</strong> & <strong>Andrey Soares</strong></p>
+                        <p>Laboratório <strong>TRAMA</strong> - UFC</p>
+                    </span>
+                </div>
             </div>
         </aside>
 
+        <!-- Mobile Navigation Menu -->
+        <div id="mobile-nav-overlay" class="mobile-nav-overlay"></div>
+        <nav id="mobile-nav" class="mobile-nav">
+            <!-- Navigation links will be cloned here by JS -->
+        </nav>
+
         <!-- Main Content Area -->
         <main class="main-content">
-            <!-- Overview Section -->
             <section id="overview" class="dashboard-section active">
                 <h2>Visão Geral</h2>
                 <div class="card-container">
-                    <div class="card"><h3>Monitores Ativos</h3><p class="card-value">-</p></div>
+                    <div class="card"><h3>Monitores Ativos</h3><p id="active-monitors-count" class="card-value">-</p></div>
                     <div class="card"><h3>Qualidade Média (IQA)</h3><p class="card-value">-</p></div>
                     <div class="card"><h3>Última Atualização</h3><p class="card-value">-</p></div>
                 </div>
-                <div class="map-placeholder card">
-                    <p>Mapa com a localização dos monitores aparecerá aqui.</p>
-                </div>
+                <div id="map" class="map-container card"></div>
             </section>
 
-            <!-- Monitors Section -->
             <section id="monitors" class="dashboard-section">
                 <h2>Gerenciamento de Monitores</h2>
                 <div class="management-grid">
                     <div class="card form-card">
                         <h3>Adicionar Novo Monitor</h3>
                         <form id="add-monitor-form">
-                            <div class="input-group"><input type="text" placeholder="ID do Monitor (ex: MOQA-01)" required></div>
-                            <div class="input-group"><input type="text" placeholder="Latitude" required></div>
-                            <div class="input-group"><input type="text" placeholder="Longitude" required></div>
+                            <div class="input-group"><input id="monitor-id" type="text" placeholder="ID do Monitor (ex: MOQA-01)" required></div>
+                            <div class="input-group"><input id="monitor-lat" type="text" placeholder="Latitude" required pattern="^-?\d{1,3}(\.\d+)?$" title="Use apenas números e ponto para as coordenadas (ex: -3.74)"></div>
+                            <div class="input-group"><input id="monitor-lon" type="text" placeholder="Longitude" required pattern="^-?\d{1,3}(\.\d+)?$" title="Use apenas números e ponto para as coordenadas (ex: -38.53)"></div>
                             <button type="submit" class="auth-btn">Adicionar Monitor</button>
                         </form>
                     </div>
                     <div class="card list-card">
                         <h3>Monitores Cadastrados</h3>
-                        <div class="list-placeholder">
-                            <p>A lista de monitores aparecerá aqui.</p>
-                        </div>
+                        <div id="monitors-list-container" class="list-container"></div>
                     </div>
                 </div>
             </section>
 
-            <!-- Analysis Section -->
             <section id="analysis" class="dashboard-section">
                 <h2>Análise de Dados</h2>
                  <div class="card">
                     <p>Filtre e visualize os dados de qualidade do ar por período e monitor.</p>
-                    <!-- Inputs for date range filter will go here -->
                 </div>
                 <div class="chart-container card">
                     <canvas id="qualityIndexChart"></canvas>
                 </div>
             </section>
 
-            <!-- Users Section -->
             <section id="users" class="dashboard-section">
                 <h2>Gerenciamento de Usuários</h2>
                  <div class="management-grid">
@@ -123,6 +135,19 @@
         </main>
     </div>
 
+    <!-- Confirmation Modal -->
+    <div id="confirmation-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 id="modal-title">Confirmar Ação</h3>
+            <p id="modal-message">Você tem certeza que deseja executar esta ação?</p>
+            <div class="modal-actions">
+                <button id="modal-cancel-btn" class="modal-btn cancel">Cancelar</button>
+                <button id="modal-confirm-btn" class="modal-btn confirm">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script src="js/script.js"></script>
     <script src="js/dashboard-logic.js"></script>
 </body>

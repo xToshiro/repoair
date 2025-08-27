@@ -29,18 +29,58 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // --- Sidebar & Navigation Logic ---
-    document.getElementById('sidebar-toggle').addEventListener('click', () => document.getElementById('sidebar').classList.toggle('collapsed'));
-    document.querySelectorAll('.nav-link').forEach(link => {
+    // --- Sidebar & Desktop Navigation Logic ---
+    const sidebar = document.getElementById('sidebar');
+    const sidebarToggle = document.getElementById('sidebar-toggle');
+    sidebarToggle.addEventListener('click', () => sidebar.classList.toggle('collapsed'));
+
+    const navLinks = document.querySelectorAll('.sidebar-nav .nav-link');
+    const sections = document.querySelectorAll('.dashboard-section');
+
+    const handleNavLinkClick = (e) => {
+        e.preventDefault();
+        const targetLink = e.currentTarget;
+        document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+        sections.forEach(s => s.classList.remove('active'));
+        targetLink.classList.add('active');
+        const targetId = targetLink.getAttribute('href').substring(1);
+        document.getElementById(targetId).classList.add('active');
+    };
+    navLinks.forEach(link => link.addEventListener('click', handleNavLinkClick));
+
+    document.getElementById('logout-btn').addEventListener('click', handleLogout);
+
+    // --- Mobile Navigation Logic ---
+    const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
+    const mobileNav = document.getElementById('mobile-nav');
+    const mobileNavOverlay = document.getElementById('mobile-nav-overlay');
+    const desktopSidebar = document.querySelector('.sidebar');
+
+    const desktopNavContent = desktopSidebar.querySelector('.sidebar-nav ul').cloneNode(true);
+    const desktopFooterContent = desktopSidebar.querySelector('.sidebar-footer').cloneNode(true);
+    mobileNav.appendChild(desktopNavContent);
+    mobileNav.appendChild(desktopFooterContent);
+
+    const toggleMobileMenu = () => {
+        mobileNav.classList.toggle('active');
+        mobileNavOverlay.classList.toggle('active');
+    };
+
+    mobileMenuToggle.addEventListener('click', toggleMobileMenu);
+    mobileNavOverlay.addEventListener('click', toggleMobileMenu);
+
+    mobileNav.querySelectorAll('.nav-link').forEach(link => {
         link.addEventListener('click', (e) => {
-            e.preventDefault();
-            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-            document.querySelectorAll('.dashboard-section').forEach(s => s.classList.remove('active'));
-            link.classList.add('active');
-            document.getElementById(link.getAttribute('href').substring(1)).classList.add('active');
+            handleNavLinkClick(e);
+            toggleMobileMenu();
         });
     });
-    document.getElementById('logout-btn').addEventListener('click', handleLogout);
+
+    const mobileThemeSwitcher = mobileNav.querySelector('.theme-btn');
+    const desktopThemeSwitcher = desktopSidebar.querySelector('.theme-btn');
+    mobileThemeSwitcher.addEventListener('click', () => desktopThemeSwitcher.click());
+    mobileNav.querySelector('.logout-btn').addEventListener('click', handleLogout);
+
 
     // --- Confirmation Modal Logic ---
     const modal = document.getElementById('confirmation-modal');
@@ -51,21 +91,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const showConfirmationModal = (message, onConfirm) => {
         modalMessage.textContent = message;
         modal.classList.add('visible');
-
         const confirmHandler = () => {
             onConfirm();
             hideModal();
         };
-
         const hideModal = () => {
             modal.classList.remove('visible');
             modalConfirmBtn.removeEventListener('click', confirmHandler);
         };
-        
         modalConfirmBtn.addEventListener('click', confirmHandler, { once: true });
         modalCancelBtn.addEventListener('click', hideModal, { once: true });
     };
-
 
     // --- Map Logic ---
     let map = null;
@@ -79,15 +115,18 @@ document.addEventListener('DOMContentLoaded', () => {
         mapMarkers.addTo(map);
     };
     
-    document.getElementById('theme-switcher').addEventListener('click', () => {
+    desktopThemeSwitcher.addEventListener('click', () => {
         setTimeout(() => {
             const isDark = document.body.classList.contains('dark-theme');
-            if (isDark) { map.removeLayer(lightTile); darkTile.addTo(map); } 
-            else { map.removeLayer(darkTile); lightTile.addTo(map); }
+            if (map) {
+                if (isDark) { map.removeLayer(lightTile); darkTile.addTo(map); } 
+                else { map.removeLayer(darkTile); lightTile.addTo(map); }
+            }
         }, 100);
     });
 
     const updateMapMarkers = (monitors) => {
+        if (!map) return;
         mapMarkers.clearLayers();
         if (monitors.length === 0) return;
         const bounds = [];
@@ -111,7 +150,7 @@ document.addEventListener('DOMContentLoaded', () => {
         showConfirmationModal(`Tem certeza que deseja deletar o monitor "${monitorName}"?`, async () => {
             const response = await apiFetch(`/monitor/${monitorId}`, { method: 'DELETE' });
             if (response && response.ok) {
-                loadMonitors(); // Refresh the list
+                loadMonitors();
             }
         });
     };

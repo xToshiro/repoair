@@ -2,7 +2,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const API_BASE_URL = 'https://for-restful-apis-or-backend-services.onrender.com/api';
     let mainChartInstance = null;
     let aggregateCharts = {};
-    let allMonitorsData = []; // Store for all processed data [{ monitorInfo, readings }]
+    let allMonitorsData = [];
+    let repoairLogoBase64, tramaLogoBase64;
     
     // --- Authentication & API Fetch Logic ---
     const handleLogout = () => {
@@ -16,26 +17,17 @@ document.addEventListener('DOMContentLoaded', () => {
             handleLogout();
             return;
         }
-
-        const defaultHeaders = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
-        const config = { ...options, headers: { ...defaultHeaders, ...options.headers }, mode: 'cors' };
-
+        const config = { ...options, headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, ...options.headers }, mode: 'cors' };
         try {
             const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
-            if (response.status === 401 || response.status === 422) {
-                handleLogout();
-                return;
-            }
+            if (response.status === 401 || response.status === 422) handleLogout();
             return response;
-        } catch (error) {
-            console.error('API Fetch Error:', error);
-        }
+        } catch (error) { console.error('API Fetch Error:', error); }
     };
 
     // --- Navigation Logic ---
     const sidebar = document.getElementById('sidebar');
-    const sidebarToggle = document.getElementById('sidebar-toggle');
-    sidebarToggle.addEventListener('click', () => sidebar.classList.toggle('collapsed'));
+    document.getElementById('sidebar-toggle').addEventListener('click', () => sidebar.classList.toggle('collapsed'));
 
     const handleNavLinkClick = (e) => {
         e.preventDefault();
@@ -43,8 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
         document.querySelectorAll('.dashboard-section').forEach(s => s.classList.remove('active'));
         targetLink.classList.add('active');
-        const targetId = targetLink.getAttribute('href').substring(1);
-        document.getElementById(targetId).classList.add('active');
+        document.getElementById(targetLink.getAttribute('href').substring(1)).classList.add('active');
     };
     document.querySelectorAll('.sidebar-nav .nav-link').forEach(link => link.addEventListener('click', handleNavLinkClick));
     document.getElementById('logout-btn').addEventListener('click', handleLogout);
@@ -54,298 +45,349 @@ document.addEventListener('DOMContentLoaded', () => {
     const mobileNav = document.getElementById('mobile-nav');
     const mobileNavOverlay = document.getElementById('mobile-nav-overlay');
     const desktopSidebar = document.querySelector('.sidebar');
-    const desktopNavContent = desktopSidebar.querySelector('.sidebar-nav ul').cloneNode(true);
-    const desktopFooterContent = desktopSidebar.querySelector('.sidebar-footer').cloneNode(true);
-    mobileNav.appendChild(desktopNavContent);
-    mobileNav.appendChild(desktopFooterContent);
-    const toggleMobileMenu = () => {
-        mobileNav.classList.toggle('active');
-        mobileNavOverlay.classList.toggle('active');
-    };
-    mobileMenuToggle.addEventListener('click', toggleMobileMenu);
-    mobileNavOverlay.addEventListener('click', toggleMobileMenu);
-    mobileNav.querySelectorAll('.nav-link').forEach(link => {
-        link.addEventListener('click', (e) => {
-            handleNavLinkClick(e);
-            toggleMobileMenu();
-        });
-    });
-    const mobileThemeSwitcher = mobileNav.querySelector('.theme-btn');
-    const desktopThemeSwitcher = desktopSidebar.querySelector('.theme-btn');
-    mobileThemeSwitcher.addEventListener('click', () => desktopThemeSwitcher.click());
+    mobileNav.appendChild(desktopSidebar.querySelector('.sidebar-nav ul').cloneNode(true));
+    mobileNav.appendChild(desktopSidebar.querySelector('.sidebar-footer').cloneNode(true));
+    const toggleMobileMenu = () => { mobileNav.classList.toggle('active'); mobileNavOverlay.classList.toggle('active'); };
+    [mobileMenuToggle, mobileNavOverlay].forEach(el => el.addEventListener('click', toggleMobileMenu));
+    mobileNav.querySelectorAll('.nav-link').forEach(link => link.addEventListener('click', (e) => { handleNavLinkClick(e); toggleMobileMenu(); }));
+    mobileNav.querySelector('.theme-btn').addEventListener('click', () => desktopSidebar.querySelector('.theme-btn').click());
     mobileNav.querySelector('.logout-btn').addEventListener('click', handleLogout);
 
-    // Confirmation Modal
+    // --- Modal Logic ---
     const modal = document.getElementById('confirmation-modal');
-    const modalConfirmBtn = document.getElementById('modal-confirm-btn');
-    const modalCancelBtn = document.getElementById('modal-cancel-btn');
-    const modalMessage = document.getElementById('modal-message');
     const showConfirmationModal = (message, onConfirm) => {
-        modalMessage.textContent = message;
+        modal.querySelector('#modal-message').textContent = message;
         modal.classList.add('visible');
+        const confirmHandler = () => { onConfirm(); hideModal(); };
         const hideModal = () => {
             modal.classList.remove('visible');
-            modalConfirmBtn.removeEventListener('click', confirmHandler);
+            modal.querySelector('#modal-confirm-btn').removeEventListener('click', confirmHandler);
         };
-        const confirmHandler = () => { onConfirm(); hideModal(); };
-        modalConfirmBtn.addEventListener('click', confirmHandler, { once: true });
-        modalCancelBtn.addEventListener('click', hideModal, { once: true });
+        modal.querySelector('#modal-confirm-btn').addEventListener('click', confirmHandler, { once: true });
+        modal.querySelector('#modal-cancel-btn').addEventListener('click', hideModal, { once: true });
     };
 
-    // --- Data Processing and UI Updates ---
+    // --- Data Processing & UI Updates ---
+    const getSelectedMonitorData = (containerId) => {
+        const selectedMonitorIds = [...document.querySelectorAll(`#${containerId} input:checked`)].map(cb => cb.value);
+        return allMonitorsData.filter(d => selectedMonitorIds.includes(d.monitorInfo.id));
+    };
+    
+    const flattenDataForExport = (data, selectedVariables) => {
+        const flatData = [];
+        data.forEach(monitorData => {
+            monitorData.readings.forEach(reading => {
+                const row = {
+                    'Monitor ID': monitorData.monitorInfo.monitor_id,
+                    'Timestamp': reading.json_file.Timestamp,
+                };
+                selectedVariables.forEach(v => {
+                    row[v.label] = reading.json_file[v.key];
+                });
+                flatData.push(row);
+            });
+        });
+        return flatData.sort((a,b) => new Date(a.Timestamp) - new Date(b.Timestamp));
+    };
+
     const updateDashboardCards = (data) => {
-        const latestReadings = data.map(d => d.readings.length > 0 ? d.readings[d.readings.length - 1].json_file : null).filter(r => r);
-
-        if (latestReadings.length === 0) {
-            document.getElementById('avg-temp-card').textContent = '-';
-            document.getElementById('avg-hum-card').textContent = '-';
-            document.getElementById('avg-pm25-card').textContent = '-';
-            return;
-        }
-
-        const avgTemp = latestReadings.reduce((sum, r) => sum + (r.extTemp || 0), 0) / latestReadings.length;
-        const avgHum = latestReadings.reduce((sum, r) => sum + (r.hum || 0), 0) / latestReadings.length;
-        const avgPm25 = latestReadings.reduce((sum, r) => sum + (r.pm25 || 0), 0) / latestReadings.length;
-
-        document.getElementById('avg-temp-card').textContent = `${avgTemp.toFixed(1)} °C`;
-        document.getElementById('avg-hum-card').textContent = `${avgHum.toFixed(1)} %`;
-        document.getElementById('avg-pm25-card').textContent = `${avgPm25.toFixed(1)} µg/m³`;
+        const latestReadings = data.map(d => d.readings.length > 0 ? d.readings.slice(-1)[0].json_file : null).filter(r => r);
+        if (latestReadings.length === 0) return;
+        const calcAvg = (key) => latestReadings.reduce((sum, r) => sum + (r[key] || 0), 0) / latestReadings.length;
+        document.getElementById('avg-temp-card').textContent = `${calcAvg('extTemp').toFixed(1)} °C`;
+        document.getElementById('avg-hum-card').textContent = `${calcAvg('hum').toFixed(1)} %`;
+        document.getElementById('avg-pm25-card').textContent = `${calcAvg('pm25').toFixed(1)} µg/m³`;
     };
 
     const updateMapMarkers = (data) => {
         if (!map) return;
         mapMarkers.clearLayers();
         if (data.length === 0) return;
-
         const bounds = [];
         data.forEach(item => {
-            const monitor = item.monitorInfo;
-            const latestReading = item.readings.length > 0 ? item.readings[item.readings.length - 1].json_file : null;
-            const lat = parseFloat(monitor.latitude);
-            const lon = parseFloat(monitor.longitude);
-
+            const latest = item.readings.length > 0 ? item.readings.slice(-1)[0].json_file : null;
+            const lat = parseFloat(item.monitorInfo.latitude), lon = parseFloat(item.monitorInfo.longitude);
             if (!isNaN(lat) && !isNaN(lon)) {
-                let popupContent = `<b>${monitor.monitor_id}</b><br>---<br>`;
-                if (latestReading) {
-                    popupContent += `Temp: ${latestReading.extTemp?.toFixed(1) || 'N/A'} °C<br>`;
-                    popupContent += `Umidade: ${latestReading.hum?.toFixed(1) || 'N/A'} %<br>`;
-                    popupContent += `PM2.5: ${latestReading.pm25?.toFixed(1) || 'N/A'} µg/m³`;
-                } else {
-                    popupContent += 'Nenhum dado recente.';
-                }
-                
-                mapMarkers.addLayer(L.marker([lat, lon]).bindPopup(popupContent));
+                const popup = `<b>${item.monitorInfo.monitor_id}</b><br>${latest ? `Temp: ${latest.extTemp?.toFixed(1)}°C<br>PM2.5: ${latest.pm25?.toFixed(1)}µg/m³` : 'N/A'}`;
+                mapMarkers.addLayer(L.marker([lat, lon]).bindPopup(popup));
                 bounds.push([lat, lon]);
             }
         });
-
-        if(bounds.length > 0) map.fitBounds(bounds, { padding: [50, 50] });
+        if (bounds.length > 0) map.fitBounds(bounds, { padding: [50, 50] });
     };
 
-    const populateAnalysisFilters = (monitors) => {
-        const container = document.getElementById('monitor-filter-container');
-        container.innerHTML = '';
-        if (monitors.length === 0) {
-            container.innerHTML = '<p>Nenhum monitor encontrado.</p>';
-            return;
-        }
-        monitors.forEach((monitor) => {
-            const label = document.createElement('label');
-            label.className = 'checkbox-label';
-            const checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            checkbox.value = monitor.id;
-            checkbox.checked = true; // Check all monitors by default
-            label.appendChild(checkbox);
-            label.append(` ${monitor.monitor_id}`);
-            container.appendChild(label);
+    const populateFilters = (containerId, monitors) => {
+        const container = document.getElementById(containerId);
+        container.innerHTML = monitors.length ? '' : '<p>Nenhum monitor encontrado.</p>';
+        monitors.forEach(m => {
+            container.innerHTML += `<label class="checkbox-label"><input type="checkbox" value="${m.id}" checked> ${m.monitor_id}</label>`;
         });
     };
     
+    const populateExtractTable = () => {
+        const container = document.getElementById('data-extract-table-container');
+        const selectedMonitors = getSelectedMonitorData('extract-monitor-filter-container');
+        const selectedVariables = [...document.querySelectorAll('#extract-variable-filter-container input:checked')].map(cb => ({ key: cb.value, label: cb.dataset.label }));
+        
+        const flatData = flattenDataForExport(selectedMonitors, selectedVariables);
+        
+        if (flatData.length === 0) {
+            container.innerHTML = '<p class="list-placeholder">Nenhum dado para exibir com os filtros selecionados.</p>';
+            return;
+        }
+        
+        const headers = ['Monitor ID', 'Timestamp', ...selectedVariables.map(v => v.label)];
+        const table = document.createElement('table');
+        table.className = 'data-table';
+        table.innerHTML = `<thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody></tbody>`;
+        const tbody = table.querySelector('tbody');
+        flatData.forEach(row => {
+            const tr = tbody.insertRow();
+            headers.forEach(header => tr.insertCell().textContent = row[header] !== undefined ? row[header] : 'N/A');
+        });
+        container.innerHTML = '';
+        container.appendChild(table);
+    };
+
     // --- Chart Logic ---
     const colors = ['#00A86B', '#48D1CC', '#FF6384', '#36A2EB', '#FFCE56', '#9966FF'];
-
     const createChartData = (selectedMonitorIds, metricKey) => {
         const datasets = [];
         selectedMonitorIds.forEach((id, index) => {
             const monitorData = allMonitorsData.find(d => d.monitorInfo.id === id);
-            if (monitorData && monitorData.readings) {
+            if (monitorData) {
                 const dataPoints = monitorData.readings
-                    .filter(r => r.json_file && typeof r.json_file[metricKey] !== 'undefined' && r.json_file.Timestamp)
-                    .map(r => ({
-                        x: new Date(r.json_file.Timestamp).getTime(), // Use getTime() for sorting
-                        y: r.json_file[metricKey]
-                    }));
-                
-                // CRITICAL FIX: Sort the data points by timestamp
-                dataPoints.sort((a, b) => a.x - b.x);
-
-                datasets.push({
-                    label: monitorData.monitorInfo.monitor_id,
-                    data: dataPoints,
-                    borderColor: colors[index % colors.length],
-                    backgroundColor: colors[index % colors.length] + '33',
-                    tension: 0.1,
-                    fill: false
-                });
+                    .filter(r => r.json_file?.[metricKey] !== undefined && r.json_file.Timestamp)
+                    .map(r => ({ x: new Date(r.json_file.Timestamp).getTime(), y: r.json_file[metricKey] }))
+                    .sort((a, b) => a.x - b.x);
+                datasets.push({ label: monitorData.monitorInfo.monitor_id, data: dataPoints, borderColor: colors[index % colors.length], tension: 0.1, fill: false });
             }
         });
         return datasets;
     };
 
-    const updateMainChart = () => {
-        const selectedMonitorIds = [...document.querySelectorAll('#monitor-filter-container input:checked')].map(cb => cb.value);
-        const selectedMetric = document.getElementById('metric-selector').value;
-        const metricLabel = document.getElementById('metric-selector').options[document.getElementById('metric-selector').selectedIndex].text;
-
-        mainChartInstance.data.datasets = createChartData(selectedMonitorIds, selectedMetric);
-        mainChartInstance.options.plugins.title.text = metricLabel;
-        mainChartInstance.update();
-    };
-    
-    const updateAggregateCharts = () => {
-        const selectedMonitorIds = [...document.querySelectorAll('#monitor-filter-container input:checked')].map(cb => cb.value);
-        Object.keys(aggregateCharts).forEach(metricKey => {
-            const chart = aggregateCharts[metricKey];
-            chart.data.datasets = createChartData(selectedMonitorIds, metricKey);
-            chart.update();
-        });
-    };
-
-    const setupAnalysisListeners = () => {
-        document.getElementById('apply-filters-btn').addEventListener('click', updateMainChart);
-        document.getElementById('monitor-filter-container').addEventListener('change', updateAggregateCharts);
+    const updateChart = (chartInstance, selectedMonitorIds, metricKey, title) => {
+        chartInstance.data.datasets = createChartData(selectedMonitorIds, metricKey);
+        if(title) chartInstance.options.plugins.title.text = title;
+        chartInstance.update();
     };
 
     // --- Map Logic ---
-    let map = null;
-    let mapMarkers = L.layerGroup();
-    let lightTile = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; OpenStreetMap &copy; CARTO' });
-    let darkTile = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; OpenStreetMap &copy; CARTO' });
+    let map = null, mapMarkers = L.layerGroup();
     const initMap = () => {
         if (map) return;
         map = L.map('map').setView([-3.74, -38.53], 12);
-        document.body.classList.contains('dark-theme') ? darkTile.addTo(map) : lightTile.addTo(map);
+        const updateTiles = () => {
+            const light = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+            const dark = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+            const tileUrl = document.body.classList.contains('dark-theme') ? dark : light;
+            if (map.tileLayer) map.removeLayer(map.tileLayer);
+            map.tileLayer = L.tileLayer(tileUrl, { attribution: '&copy; OpenStreetMap &copy; CARTO' }).addTo(map);
+        };
+        updateTiles();
         mapMarkers.addTo(map);
+        desktopSidebar.querySelector('.theme-btn').addEventListener('click', () => setTimeout(updateTiles, 100));
     };
-    desktopThemeSwitcher.addEventListener('click', () => {
-        setTimeout(() => {
-            if (map) {
-                if (document.body.classList.contains('dark-theme')) { map.removeLayer(lightTile); darkTile.addTo(map); } 
-                else { map.removeLayer(darkTile); lightTile.addTo(map); }
-            }
-        }, 100);
-    });
 
     // --- Monitor Management ---
     const renderMonitorsTable = (monitors) => {
         const container = document.getElementById('monitors-list-container');
-        if (monitors.length === 0) {
-            container.innerHTML = '<p class="list-placeholder">Nenhum monitor cadastrado.</p>';
-            return;
-        }
+        container.innerHTML = monitors.length ? '' : '<p class="list-placeholder">Nenhum monitor cadastrado.</p>';
+        if (monitors.length === 0) return;
         const table = document.createElement('table');
         table.className = 'data-table';
-        table.innerHTML = `<thead><tr><th>ID do Monitor</th><th>Latitude</th><th>Longitude</th><th>Ações</th></tr></thead><tbody></tbody>`;
-        const tbody = table.querySelector('tbody');
+        table.innerHTML = `<thead><tr><th>ID</th><th>Lat</th><th>Lon</th><th>Ações</th></tr></thead><tbody></tbody>`;
         monitors.forEach(m => {
-            const row = tbody.insertRow();
+            const row = table.querySelector('tbody').insertRow();
             row.innerHTML = `<td>${m.monitor_id}</td><td>${m.latitude}</td><td>${m.longitude}</td>`;
-            const actionsCell = row.insertCell();
-            actionsCell.className = 'action-buttons';
-            actionsCell.innerHTML = `<button title="Editar"><i class="fas fa-edit"></i></button>`;
             const deleteBtn = document.createElement('button');
             deleteBtn.title = 'Deletar';
             deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
-            deleteBtn.onclick = () => showConfirmationModal(`Tem certeza que deseja deletar o monitor "${m.monitor_id}"?`, async () => {
-                 const response = await apiFetch(`/monitor/${m.id}`, { method: 'DELETE' });
-                 if (response && response.ok) { loadAndProcessData(); }
+            deleteBtn.onclick = () => showConfirmationModal(`Deletar monitor "${m.monitor_id}"?`, async () => {
+                 if ((await apiFetch(`/monitor/${m.id}`, { method: 'DELETE' }))?.ok) loadAndProcessData();
             });
+            const actionsCell = row.insertCell();
+            actionsCell.className = 'action-buttons';
+            actionsCell.innerHTML = `<button title="Editar"><i class="fas fa-edit"></i></button>`;
             actionsCell.appendChild(deleteBtn);
         });
-        container.innerHTML = '';
         container.appendChild(table);
     };
     
     document.getElementById('add-monitor-form').addEventListener('submit', async (e) => {
         e.preventDefault();
-        const response = await apiFetch('/monitor', {
-            method: 'POST',
-            body: JSON.stringify({ 
-                monitor_id: document.getElementById('monitor-id').value, 
-                latitude: document.getElementById('monitor-lat').value.replace(',', '.'), 
-                longitude: document.getElementById('monitor-lon').value.replace(',', '.') 
-            })
-        });
-        if (response && response.ok) {
+        const body = { 
+            monitor_id: e.target.querySelector('#monitor-id').value, 
+            latitude: e.target.querySelector('#monitor-lat').value, 
+            longitude: e.target.querySelector('#monitor-lon').value
+        };
+        if ((await apiFetch('/monitor', { method: 'POST', body: JSON.stringify(body) }))?.ok) {
             e.target.reset();
             loadAndProcessData();
         }
     });
 
-    // --- Main Data Loading Orchestrator ---
-    const loadAndProcessData = async () => {
-        const monitorsResponse = await apiFetch('/monitor');
-        if (!monitorsResponse || !monitorsResponse.ok) {
-            renderMonitorsTable([]); return;
-        }
-        const monitors = await monitorsResponse.json();
-        renderMonitorsTable(monitors);
-        populateAnalysisFilters(monitors);
-
-        const dataPromises = monitors.map(m =>
-            apiFetch(`/quality_indice_by_monitor/${m.id}`).then(res => res.ok ? res.json() : [])
-        );
-        const results = await Promise.all(dataPromises);
-
-        allMonitorsData = monitors.map((monitor, index) => ({
-            monitorInfo: monitor,
-            readings: results[index] || []
-        }));
-        
-        updateDashboardCards(allMonitorsData);
-        updateMapMarkers(allMonitorsData);
-        updateMainChart();
-        updateAggregateCharts();
-    };
-
-    // --- Initial Load ---
-    const initializeDashboard = () => {
-        initMap();
-        
-        // CRITICAL FIX: Removed hardcoded time unit to allow auto-scaling
-        const chartOptions = (title) => ({
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                x: { 
-                    type: 'time', 
-                    time: { 
-                        tooltipFormat: 'dd/MM/yyyy HH:mm' 
-                    }, 
-                    title: { display: false } 
-                },
-                y: { title: { display: true, text: 'Valor' } }
-            },
-            plugins: {
-                title: { display: true, text: title, font: { size: 16 } },
-                legend: { display: false }
+    // --- Export Logic ---
+    const imageToBase64 = (imgElement) => {
+        return new Promise((resolve, reject) => {
+            imgElement.onerror = () => reject(new Error(`Could not load image at ${imgElement.src}`));
+            if (imgElement.complete && imgElement.naturalHeight !== 0) {
+                const canvas = document.createElement("canvas");
+                canvas.width = imgElement.naturalWidth;
+                canvas.height = imgElement.naturalHeight;
+                const ctx = canvas.getContext("2d");
+                ctx.drawImage(imgElement, 0, 0);
+                resolve(canvas.toDataURL("image/png"));
+            } else {
+                imgElement.onload = () => resolve(imageToBase64(imgElement));
             }
         });
+    };
+    
+    const loadLogosForPdf = async () => {
+        try {
+            [repoairLogoBase64, tramaLogoBase64] = await Promise.all([
+                imageToBase64(document.getElementById('repoair-logo-pdf')),
+                imageToBase64(document.getElementById('trama-logo-pdf'))
+            ]);
+        } catch (error) {
+             console.error(
+                "AVISO: Não foi possível carregar os logos para o relatório PDF. " +
+                "Verifique os seguintes pontos:\n" +
+                "1. Se os caminhos para 'repologo.png' e 'trama-logo-verde.png' em 'main-dashboard.html' estão corretos.\n" +
+                "2. Se os arquivos de imagem existem na pasta 'assets/images/'.\n" +
+                "3. Se há erros de carregamento (404 Not Found) na aba 'Rede' (Network) do console do navegador.\n" +
+                "O relatório será gerado sem os logos.",
+                error
+            );
+        }
+    };
 
-        mainChartInstance = new Chart(document.getElementById('qualityIndexChart').getContext('2d'), {
-            type: 'line', data: { datasets: [] }, options: { ...chartOptions('Índice de Qualidade'), plugins: { ...chartOptions().plugins, legend: { display: true, position: 'top' } } }
+    const setupExportListeners = () => {
+        document.getElementById('refresh-extract-table-btn').addEventListener('click', populateExtractTable);
+        
+        const getFilteredDataForExport = () => {
+            const selectedMonitors = getSelectedMonitorData('extract-monitor-filter-container');
+            const selectedVariables = [...document.querySelectorAll('#extract-variable-filter-container input:checked')].map(cb => ({ key: cb.value, label: cb.dataset.label }));
+            const flatData = flattenDataForExport(selectedMonitors, selectedVariables);
+            if (flatData.length === 0) {
+                alert('Nenhum dado para exportar com os filtros selecionados.');
+                return null;
+            }
+            return flatData;
+        };
+
+        document.getElementById('export-csv-btn').addEventListener('click', () => {
+            const data = getFilteredDataForExport();
+            if (!data) return;
+            const csvContent = "data:text/csv;charset=utf-8," + [Object.keys(data[0]), ...data.map(item => Object.values(item))].map(e => e.join(",")).join("\n");
+            const link = document.createElement("a");
+            link.setAttribute("href", encodeURI(csvContent));
+            link.setAttribute("download", "repoair_data.csv");
+            document.body.appendChild(link); link.click(); document.body.removeChild(link);
+        });
+        
+        document.getElementById('export-xlsx-btn').addEventListener('click', () => {
+            const data = getFilteredDataForExport();
+            if (!data) return;
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "DadosRepoAir");
+            XLSX.writeFile(wb, "repoair_data.xlsx");
+        });
+        
+        document.getElementById('export-pdf-btn').addEventListener('click', () => {
+            const data = getFilteredDataForExport();
+            if (!data) return;
+            
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            // Header
+            if(repoairLogoBase64) doc.addImage(repoairLogoBase64, 'PNG', 14, 10, 50, 22);
+            if(tramaLogoBase64) doc.addImage(tramaLogoBase64, 'PNG', doc.internal.pageSize.getWidth() - 54, 10, 40, 17);
+
+            doc.setFontSize(10).text("Laboratório de Transportes e Meio Ambiente (TRAMA) - UFC", doc.internal.pageSize.getWidth() / 2, 40, { align: 'center' });
+
+            // Title
+            doc.setFontSize(16).text("Relatório de Dados - Plataforma RepoAir", doc.internal.pageSize.getWidth() / 2, 50, { align: 'center' });
+            doc.setFontSize(10).text(`Gerado em: ${new Date().toLocaleString()}`, doc.internal.pageSize.getWidth() / 2, 56, { align: 'center' });
+
+            doc.autoTable({
+                startY: 70,
+                head: [Object.keys(data[0])],
+                body: data.map(row => Object.values(row)),
+                theme: 'striped',
+                headStyles: { fillColor: [0, 168, 107] }
+            });
+
+            doc.save('repoair_report.pdf');
+        });
+    };
+
+    // --- Main Initializer ---
+    const initializeDashboard = () => {
+        loadLogosForPdf(); // Load logos in the background, non-blocking
+        
+        initMap();
+        
+        const chartOptions = (title) => ({
+            responsive: true, maintainAspectRatio: false,
+            scales: { x: { type: 'time', time: { tooltipFormat: 'dd/MM/yyyy HH:mm' } }, y: { title: { display: true, text: 'Valor' } } },
+            plugins: { title: { display: true, text: title, font: { size: 16 } }, legend: { display: false } }
         });
 
-        aggregateCharts.extTemp = new Chart(document.getElementById('tempChart').getContext('2d'), { type: 'line', data: { datasets: [] }, options: chartOptions('Temperatura (°C)') });
-        aggregateCharts.hum = new Chart(document.getElementById('humChart').getContext('2d'), { type: 'line', data: { datasets: [] }, options: chartOptions('Umidade (%)') });
-        aggregateCharts.pm1 = new Chart(document.getElementById('pm1Chart').getContext('2d'), { type: 'line', data: { datasets: [] }, options: chartOptions('PM1.0 (µg/m³)') });
-        aggregateCharts.pm25 = new Chart(document.getElementById('pm25Chart').getContext('2d'), { type: 'line', data: { datasets: [] }, options: chartOptions('PM2.5 (µg/m³)') });
-        aggregateCharts.pm10 = new Chart(document.getElementById('pm10Chart').getContext('2d'), { type: 'line', data: { datasets: [] }, options: chartOptions('PM10 (µg/m³)') });
-        aggregateCharts.Pres = new Chart(document.getElementById('presChart').getContext('2d'), { type: 'line', data: { datasets: [] }, options: chartOptions('Pressão (hPa)') });
+        mainChartInstance = new Chart('qualityIndexChart', { type: 'line', options: { ...chartOptions('Índice de Qualidade'), plugins: { ...chartOptions().plugins, legend: { display: true, position: 'top' } } } });
+        ['extTemp:Temperatura (°C)', 'hum:Umidade (%)', 'pm1:PM1.0 (µg/m³)', 'pm25:PM2.5 (µg/m³)', 'pm10:PM10 (µg/m³)', 'Pres:Pressão (hPa)'].forEach(item => {
+            const [key, title] = item.split(':');
+            const chartId = key.replace('ext', '').toLowerCase() + 'Chart';
+            aggregateCharts[key] = new Chart(chartId, { type: 'line', options: chartOptions(title) });
+        });
 
-        setupAnalysisListeners();
+        document.getElementById('apply-filters-btn').addEventListener('click', () => {
+            const selectedIds = getSelectedMonitorData('monitor-filter-container').map(d => d.monitorInfo.id);
+            const selectedMetric = document.getElementById('metric-selector').value;
+            const metricLabel = document.getElementById('metric-selector').selectedOptions[0].text;
+            updateChart(mainChartInstance, selectedIds, selectedMetric, metricLabel);
+        });
+        document.getElementById('monitor-filter-container').addEventListener('change', () => {
+            const selectedIds = getSelectedMonitorData('monitor-filter-container').map(d => d.monitorInfo.id);
+            Object.keys(aggregateCharts).forEach(key => updateChart(aggregateCharts[key], selectedIds, key));
+        });
+
+        setupExportListeners();
         loadAndProcessData();
+    };
+
+    const loadAndProcessData = async () => {
+        const monitorsResponse = await apiFetch('/monitor');
+        if (!monitorsResponse?.ok) { renderMonitorsTable([]); return; }
+        const monitors = await monitorsResponse.json();
+        
+        renderMonitorsTable(monitors);
+        populateFilters('monitor-filter-container', monitors);
+        populateFilters('extract-monitor-filter-container', monitors);
+
+        const variableContainer = document.getElementById('extract-variable-filter-container');
+        const variables = [
+            { key: 'extTemp', label: 'Temp (°C)' }, { key: 'hum', label: 'Umidade (%)' },
+            { key: 'pm1', label: 'PM1.0 (µg/m³)' }, { key: 'pm25', label: 'PM2.5 (µg/m³)' },
+            { key: 'pm10', label: 'PM10 (µg/m³)' }, { key: 'Pres', label: 'Pressão (hPa)' }
+        ];
+        variableContainer.innerHTML = '';
+        variables.forEach(v => {
+            variableContainer.innerHTML += `<label class="checkbox-label"><input type="checkbox" value="${v.key}" data-label="${v.label}" checked> ${v.label}</label>`;
+        });
+
+        const results = await Promise.all(monitors.map(m => apiFetch(`/quality_indice_by_monitor/${m.id}`).then(res => res.ok ? res.json() : [])));
+        allMonitorsData = monitors.map((m, i) => ({ monitorInfo: m, readings: results[i] || [] }));
+        
+        // Initial UI population with all data
+        updateDashboardCards(allMonitorsData);
+        updateMapMarkers(allMonitorsData);
+        populateExtractTable();
+        document.getElementById('apply-filters-btn').click(); 
+        document.getElementById('monitor-filter-container').dispatchEvent(new Event('change'));
     };
 
     initializeDashboard();

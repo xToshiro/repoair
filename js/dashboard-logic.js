@@ -1,11 +1,14 @@
 document.addEventListener('DOMContentLoaded', () => {
     const API_BASE_URL = 'https://for-restful-apis-or-backend-services.onrender.com/api';
-    let mainChartInstance = null;
-    let aggregateCharts = {};
     let allMonitorsData = [];
     let repoairLogoBase64, tramaLogoBase64;
     
-    // --- Authentication & API Fetch Logic ---
+    const VARIABLES = [
+        { key: 'extTemp', label: 'Temperatura (°C)' }, { key: 'hum', label: 'Umidade (%)' },
+        { key: 'pm1', label: 'PM1.0 (µg/m³)' }, { key: 'pm25', label: 'PM2.5 (µg/m³)' },
+        { key: 'pm10', label: 'PM10 (µg/m³)' }, { key: 'Pres', label: 'Pressão (hPa)' }
+    ];
+
     const handleLogout = () => {
         sessionStorage.removeItem('authToken');
         window.location.href = 'dashboard.html';
@@ -25,7 +28,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) { console.error('API Fetch Error:', error); }
     };
 
-    // --- Navigation Logic ---
     const sidebar = document.getElementById('sidebar');
     document.getElementById('sidebar-toggle').addEventListener('click', () => sidebar.classList.toggle('collapsed'));
 
@@ -36,11 +38,13 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.dashboard-section').forEach(s => s.classList.remove('active'));
         targetLink.classList.add('active');
         document.getElementById(targetLink.getAttribute('href').substring(1)).classList.add('active');
+        if (targetLink.getAttribute('href') !== '#monitors' && targetLink.getAttribute('href') !== '#extract-data' && targetLink.getAttribute('href') !== '#users') {
+            window.dispatchEvent(new Event('resize'));
+        }
     };
     document.querySelectorAll('.sidebar-nav .nav-link').forEach(link => link.addEventListener('click', handleNavLinkClick));
     document.getElementById('logout-btn').addEventListener('click', handleLogout);
 
-    // Mobile Navigation
     const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
     const mobileNav = document.getElementById('mobile-nav');
     const mobileNavOverlay = document.getElementById('mobile-nav-overlay');
@@ -53,7 +57,6 @@ document.addEventListener('DOMContentLoaded', () => {
     mobileNav.querySelector('.theme-btn').addEventListener('click', () => desktopSidebar.querySelector('.theme-btn').click());
     mobileNav.querySelector('.logout-btn').addEventListener('click', handleLogout);
 
-    // --- Modal Logic ---
     const modal = document.getElementById('confirmation-modal');
     const showConfirmationModal = (message, onConfirm) => {
         modal.querySelector('#modal-message').textContent = message;
@@ -67,38 +70,63 @@ document.addEventListener('DOMContentLoaded', () => {
         modal.querySelector('#modal-cancel-btn').addEventListener('click', hideModal, { once: true });
     };
 
-    // --- Data Processing & UI Updates ---
-    const getSelectedMonitorData = (containerId) => {
-        const selectedMonitorIds = [...document.querySelectorAll(`#${containerId} input:checked`)].map(cb => cb.value);
-        return allMonitorsData.filter(d => selectedMonitorIds.includes(d.monitorInfo.id));
+    const getSelectedMonitorIds = (containerId) => {
+        return [...document.querySelectorAll(`#${containerId} input:checked`)].map(cb => cb.value);
+    };
+
+    const populateFilters = (containerId, monitors) => {
+        const container = document.getElementById(containerId);
+        container.innerHTML = monitors.length ? '' : '<p>Nenhum monitor encontrado.</p>';
+        monitors.forEach(m => {
+            container.innerHTML += `<label class="checkbox-label"><input type="checkbox" value="${m.id}" checked> ${m.monitor_id}</label>`;
+        });
     };
     
-    const flattenDataForExport = (data, selectedVariables) => {
-        const flatData = [];
-        data.forEach(monitorData => {
-            monitorData.readings.forEach(reading => {
-                const row = {
-                    'Monitor ID': monitorData.monitorInfo.monitor_id,
-                    'Timestamp': reading.json_file.Timestamp,
-                };
-                selectedVariables.forEach(v => {
-                    row[v.label] = reading.json_file[v.key];
-                });
-                flatData.push(row);
+    const populateMonitorSelect = (selectId, monitors) => {
+        const select = document.getElementById(selectId);
+        select.innerHTML = '';
+        monitors.forEach(m => {
+            select.innerHTML += `<option value="${m.id}">${m.monitor_id}</option>`;
+        });
+    };
+
+    const populateSelectWithOptions = (selectId, options) => {
+        const select = document.getElementById(selectId);
+        select.innerHTML = '';
+        options.forEach(opt => {
+            select.innerHTML += `<option value="${opt.key}">${opt.label}</option>`;
+        });
+    };
+
+    let map = null, mapMarkers = L.layerGroup(), heatmapLayer = null;
+    const initMap = () => {
+        if (map) return;
+        map = L.map('map', { preferCanvas: true }).setView([-3.74, -38.53], 12);
+        const updateTiles = () => {
+            const light = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+            const dark = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+            const tileUrl = document.body.classList.contains('dark-theme') ? dark : light;
+            if (map.tileLayer) map.removeLayer(map.tileLayer);
+            map.tileLayer = L.tileLayer(tileUrl, { attribution: '&copy; OpenStreetMap &copy; CARTO' }).addTo(map);
+        };
+        updateTiles();
+        mapMarkers.addTo(map);
+        heatmapLayer = L.heatLayer([], { radius: 25, blur: 15, maxZoom: 12 });
+        desktopSidebar.querySelector('.theme-btn').addEventListener('click', () => setTimeout(updateTiles, 100));
+        
+        document.querySelectorAll('input[name="map-layer"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                if(e.currentTarget.value === 'heatmap') {
+                    map.removeLayer(mapMarkers);
+                    map.addLayer(heatmapLayer);
+                } else {
+                    map.removeLayer(heatmapLayer);
+                    map.addLayer(mapMarkers);
+                }
             });
         });
-        return flatData.sort((a,b) => new Date(a.Timestamp) - new Date(b.Timestamp));
     };
-
-    const updateDashboardCards = (data) => {
-        const latestReadings = data.map(d => d.readings.length > 0 ? d.readings.slice(-1)[0].json_file : null).filter(r => r);
-        if (latestReadings.length === 0) return;
-        const calcAvg = (key) => latestReadings.reduce((sum, r) => sum + (r[key] || 0), 0) / latestReadings.length;
-        document.getElementById('avg-temp-card').textContent = `${calcAvg('extTemp').toFixed(1)} °C`;
-        document.getElementById('avg-hum-card').textContent = `${calcAvg('hum').toFixed(1)} %`;
-        document.getElementById('avg-pm25-card').textContent = `${calcAvg('pm25').toFixed(1)} µg/m³`;
-    };
-
+    
     const updateMapMarkers = (data) => {
         if (!map) return;
         mapMarkers.clearLayers();
@@ -116,80 +144,297 @@ document.addEventListener('DOMContentLoaded', () => {
         if (bounds.length > 0) map.fitBounds(bounds, { padding: [50, 50] });
     };
 
-    const populateFilters = (containerId, monitors) => {
-        const container = document.getElementById(containerId);
-        container.innerHTML = monitors.length ? '' : '<p>Nenhum monitor encontrado.</p>';
-        monitors.forEach(m => {
-            container.innerHTML += `<label class="checkbox-label"><input type="checkbox" value="${m.id}" checked> ${m.monitor_id}</label>`;
+    const updateHeatmap = (data, metricKey) => {
+        const heatData = [];
+        data.forEach(item => {
+            const latest = item.readings.length > 0 ? item.readings.slice(-1)[0].json_file : null;
+            if (latest && latest[metricKey] !== undefined) {
+                 const lat = parseFloat(item.monitorInfo.latitude), lon = parseFloat(item.monitorInfo.longitude);
+                 if(!isNaN(lat) && !isNaN(lon)) {
+                     heatData.push([lat, lon, latest[metricKey]]);
+                 }
+            }
         });
+        heatmapLayer.setLatLngs(heatData);
+    };
+
+    const getPlotlyLayout = (title) => {
+        const isDark = document.body.classList.contains('dark-theme');
+        return {
+            title: title,
+            font: { color: isDark ? '#e0e0e0' : '#333333' },
+            paper_bgcolor: 'transparent',
+            plot_bgcolor: 'transparent',
+            xaxis: { gridcolor: isDark ? '#444' : '#ddd' },
+            yaxis: { gridcolor: isDark ? '#444' : '#ddd' },
+            legend: { orientation: 'h', y: -0.2 }
+        };
+    };
+
+    const stats = {
+        mean: arr => arr.reduce((a, b) => a + b, 0) / arr.length,
+        median: arr => {
+            const mid = Math.floor(arr.length / 2), nums = [...arr].sort((a, b) => a - b);
+            return arr.length % 2 !== 0 ? nums[mid] : (nums[mid - 1] + nums[mid]) / 2;
+        },
+        stdDev: arr => {
+            const mean = stats.mean(arr);
+            return Math.sqrt(arr.map(x => Math.pow(x - mean, 2)).reduce((a, b) => a + b) / arr.length);
+        },
+        max: arr => Math.max(...arr),
+        min: arr => Math.min(...arr)
     };
     
-    const populateExtractTable = () => {
-        const container = document.getElementById('data-extract-table-container');
-        const selectedMonitors = getSelectedMonitorData('extract-monitor-filter-container');
-        const selectedVariables = [...document.querySelectorAll('#extract-variable-filter-container input:checked')].map(cb => ({ key: cb.value, label: cb.dataset.label }));
+    const runBIAnalysis = () => {
+        const selectedIds = getSelectedMonitorIds('overview-monitor-filter-container');
+        const metric = document.getElementById('bi-metric-selector').value;
+        const stat = document.getElementById('bi-stat-selector').value;
         
-        const flatData = flattenDataForExport(selectedMonitors, selectedVariables);
+        const results = [];
+        const filteredMonitors = allMonitorsData.filter(d => selectedIds.includes(d.monitorInfo.id));
         
-        if (flatData.length === 0) {
-            container.innerHTML = '<p class="list-placeholder">Nenhum dado para exibir com os filtros selecionados.</p>';
+        filteredMonitors.forEach(monitorData => {
+            if (monitorData.readings.length > 0) {
+                const values = monitorData.readings.map(r => r.json_file[metric]).filter(v => v !== undefined && v !== null);
+                if (values.length > 0) {
+                    results.push({
+                        monitor: monitorData.monitorInfo.monitor_id,
+                        value: stats[stat](values)
+                    });
+                }
+            }
+        });
+        
+        const data = [{
+            x: results.map(r => r.monitor),
+            y: results.map(r => r.value),
+            type: 'bar',
+            marker: { color: document.body.classList.contains('dark-theme') ? '#48D1CC' : '#00A86B' }
+        }];
+        const metricLabel = VARIABLES.find(v => v.key === metric).label;
+        const statLabel = document.getElementById('bi-stat-selector').selectedOptions[0].text;
+        Plotly.newPlot('bi-chart', data, getPlotlyLayout(`${statLabel} de ${metricLabel}`), {responsive: true});
+        updateHeatmap(filteredMonitors, metric);
+    };
+    
+    const runTimeSeriesDecomposition = () => {
+        const chartDiv = document.getElementById('timeseries-decomposition-chart');
+        const monitorId = document.getElementById('temporal-monitor-selector').value;
+        const metricKey = document.getElementById('temporal-metric-selector').value;
+
+        const monitorData = allMonitorsData.find(d => d.monitorInfo.id === monitorId);
+        if (!monitorData || monitorData.readings.length < 24) {
+            Plotly.purge(chartDiv);
+            chartDiv.innerHTML = `<p class="chart-placeholder-text">Dados insuficientes para gerar a série temporal (necessário min. 24h de dados).</p>`;
+            return;
+        }
+
+        const series = monitorData.readings
+            .map(r => ({ x: new Date(r.json_file.Timestamp), y: r.json_file[metricKey] }))
+            .filter(d => d.y !== undefined && d.y !== null)
+            .sort((a, b) => a.x - b.x);
+
+        if (series.length < 24) {
+            Plotly.purge(chartDiv);
+            chartDiv.innerHTML = `<p class="chart-placeholder-text">Dados insuficientes para gerar a série temporal (necessário min. 24h de dados).</p>`;
             return;
         }
         
-        const headers = ['Monitor ID', 'Timestamp', ...selectedVariables.map(v => v.label)];
-        const table = document.createElement('table');
-        table.className = 'data-table';
-        table.innerHTML = `<thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody></tbody>`;
-        const tbody = table.querySelector('tbody');
-        flatData.forEach(row => {
-            const tr = tbody.insertRow();
-            headers.forEach(header => tr.insertCell().textContent = row[header] !== undefined ? row[header] : 'N/A');
-        });
-        container.innerHTML = '';
-        container.appendChild(table);
+        chartDiv.innerHTML = ''; 
+
+        const x = series.map(d => d.x);
+        const y = series.map(d => d.y);
+
+        const movingAverage = (data, windowSize) => {
+            let result = [];
+            for (let i = 0; i < data.length; i++) {
+                if (i < windowSize - 1) {
+                    result.push(null);
+                } else {
+                    let sum = 0;
+                    for (let j = 0; j < windowSize; j++) {
+                        sum += data[i - j];
+                    }
+                    result.push(sum / windowSize);
+                }
+            }
+            return result;
+        };
+        
+        const trend = movingAverage(y, 24);
+        const originalTrace = { x, y, mode: 'lines', name: 'Original', line: { color: document.body.classList.contains('dark-theme') ? '#48D1CC' : '#00A86B', width: 1 } };
+        const trendTrace = { x, y: trend, mode: 'lines', name: 'Tendência (Média Móvel 24h)', line: { color: '#FF6384', width: 2 } };
+        
+        const metricLabel = VARIABLES.find(v => v.key === metricKey).label;
+        const layout = getPlotlyLayout(`Série Temporal e Tendência para ${metricLabel}`);
+        Plotly.newPlot(chartDiv, [originalTrace, trendTrace], layout, {responsive: true});
     };
 
-    // --- Chart Logic ---
-    const colors = ['#00A86B', '#48D1CC', '#FF6384', '#36A2EB', '#FFCE56', '#9966FF'];
-    const createChartData = (selectedMonitorIds, metricKey) => {
-        const datasets = [];
-        selectedMonitorIds.forEach((id, index) => {
+    const runCyclePlot = () => {
+        const monitorId = document.getElementById('temporal-monitor-selector').value;
+        const metricKey = document.getElementById('temporal-metric-selector').value;
+        const period = document.getElementById('cycle-plot-period').value;
+
+        const monitorData = allMonitorsData.find(d => d.monitorInfo.id === monitorId);
+        if (!monitorData) return;
+
+        const groupedData = {};
+        monitorData.readings.forEach(r => {
+            const value = r.json_file[metricKey];
+            if (value === undefined || value === null) return;
+            const date = new Date(r.json_file.Timestamp);
+            let key = (period === 'hour') ? date.getHours() : date.getDay();
+            if (!groupedData[key]) groupedData[key] = [];
+            groupedData[key].push(value);
+        });
+
+        const cycleLabels = period === 'hour' 
+            ? [...Array(24).keys()]
+            : [0, 1, 2, 3, 4, 5, 6];
+        const displayLabels = period === 'hour'
+            ? cycleLabels.map(String)
+            : ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+        
+        const y = cycleLabels.map(key => groupedData[key] ? stats.mean(groupedData[key]) : 0);
+
+        const data = [{ 
+            x: displayLabels, 
+            y, 
+            type: 'scatter',
+            mode: 'lines+markers',
+            line: { 
+                color: document.body.classList.contains('dark-theme') ? '#48D1CC' : '#00A86B',
+                shape: 'spline' 
+            }
+        }];
+        
+        const metricLabel = VARIABLES.find(v => v.key === metricKey).label;
+        const periodLabel = period === 'hour' ? "Hora do Dia" : "Dia da Semana";
+        const layout = getPlotlyLayout(`Média de ${metricLabel} por ${periodLabel}`);
+        Plotly.newPlot('cycle-plot-chart', data, layout, {responsive: true});
+    };
+
+    const runHistogram = () => {
+        const monitorId = document.getElementById('dist-monitor-selector').value;
+        const metricKey = document.getElementById('dist-metric-selector').value;
+
+        const monitorData = allMonitorsData.find(d => d.monitorInfo.id === monitorId);
+        if (!monitorData) return;
+        
+        const values = monitorData.readings.map(r => r.json_file[metricKey]).filter(v => v !== undefined && v !== null);
+
+        const data = [{ x: values, type: 'histogram', marker: { color: document.body.classList.contains('dark-theme') ? '#48D1CC' : '#00A86B' } }];
+
+        const metricLabel = VARIABLES.find(v => v.key === metricKey).label;
+        const monitorLabel = monitorData.monitorInfo.monitor_id;
+        const layout = getPlotlyLayout(`Distribuição de ${metricLabel} (${monitorLabel})`);
+        Plotly.newPlot('histogram-chart', data, layout, {responsive: true});
+    };
+
+    const runBoxPlot = () => {
+        const selectedIds = getSelectedMonitorIds('dist-monitor-filter-container');
+        const metricKey = document.getElementById('dist-metric-selector').value;
+        
+        const data = [];
+        selectedIds.forEach(id => {
             const monitorData = allMonitorsData.find(d => d.monitorInfo.id === id);
             if (monitorData) {
-                const dataPoints = monitorData.readings
-                    .filter(r => r.json_file?.[metricKey] !== undefined && r.json_file.Timestamp)
-                    .map(r => ({ x: new Date(r.json_file.Timestamp).getTime(), y: r.json_file[metricKey] }))
-                    .sort((a, b) => a.x - b.x);
-                datasets.push({ label: monitorData.monitorInfo.monitor_id, data: dataPoints, borderColor: colors[index % colors.length], tension: 0.1, fill: false });
+                const values = monitorData.readings.map(r => r.json_file[metricKey]).filter(v => v !== undefined && v !== null);
+                if (values.length > 0) {
+                    data.push({ 
+                        y: values, 
+                        type: 'violin',
+                        name: monitorData.monitorInfo.monitor_id,
+                        box: { visible: true },
+                        meanline: { visible: true },
+                        points: 'none'
+                    });
+                }
             }
         });
-        return datasets;
+
+        const metricLabel = VARIABLES.find(v => v.key === metricKey).label;
+        const layout = getPlotlyLayout(`Violin Plot de ${metricLabel} por Monitor`);
+        Plotly.newPlot('box-plot-chart', data, layout, {responsive: true});
     };
 
-    const updateChart = (chartInstance, selectedMonitorIds, metricKey, title) => {
-        chartInstance.data.datasets = createChartData(selectedMonitorIds, metricKey);
-        if(title) chartInstance.options.plugins.title.text = title;
-        chartInstance.update();
-    };
+    const runCorrelationAnalysis = () => {
+        const selectedIds = getSelectedMonitorIds('analysis-monitor-filter-container');
+        const varXKey = document.getElementById('corr-var-x').value;
+        const varYKey = document.getElementById('corr-var-y').value;
 
-    // --- Map Logic ---
-    let map = null, mapMarkers = L.layerGroup();
-    const initMap = () => {
-        if (map) return;
-        map = L.map('map').setView([-3.74, -38.53], 12);
-        const updateTiles = () => {
-            const light = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
-            const dark = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
-            const tileUrl = document.body.classList.contains('dark-theme') ? dark : light;
-            if (map.tileLayer) map.removeLayer(map.tileLayer);
-            map.tileLayer = L.tileLayer(tileUrl, { attribution: '&copy; OpenStreetMap &copy; CARTO' }).addTo(map);
+        let dataPoints = [];
+        selectedIds.forEach(id => {
+            const monitorData = allMonitorsData.find(d => d.monitorInfo.id === id);
+            if (monitorData) {
+                monitorData.readings.forEach(r => {
+                    if (r.json_file[varXKey] !== undefined && r.json_file[varYKey] !== undefined) {
+                        dataPoints.push({ x: r.json_file[varXKey], y: r.json_file[varYKey] });
+                    }
+                });
+            }
+        });
+        
+        if (dataPoints.length < 2) {
+             document.getElementById('correlation-result-text').textContent = 'Dados insuficientes para correlação.';
+             Plotly.purge('correlation-chart');
+             return;
+        }
+
+        const xValues = dataPoints.map(p => p.x);
+        const yValues = dataPoints.map(p => p.y);
+        const sumX = xValues.reduce((a, b) => a + b, 0);
+        const sumY = yValues.reduce((a, b) => a + b, 0);
+        const sumXY = xValues.map((x, i) => x * yValues[i]).reduce((a, b) => a + b, 0);
+        const sumX2 = xValues.map(x => x * x).reduce((a, b) => a + b, 0);
+        const sumY2 = yValues.map(y => y * y).reduce((a, b) => a + b, 0);
+        const n = xValues.length;
+        const numerator = n * sumXY - sumX * sumY;
+        const denominator = Math.sqrt((n * sumX2 - sumX * sumX) * (n * sumY2 - sumY * sumY));
+        const correlation = denominator === 0 ? 0 : numerator / denominator;
+        
+        document.getElementById('correlation-result-text').textContent = `Coeficiente de Correlação (Pearson): ${correlation.toFixed(4)}`;
+
+        const trace = { x: xValues, y: yValues, mode: 'markers', type: 'scatter', marker: { color: document.body.classList.contains('dark-theme') ? '#48D1CC' : '#00A86B', size: 5 } };
+        const layout = getPlotlyLayout(`Correlação entre ${varXKey} e ${varYKey}`);
+        layout.xaxis.title = VARIABLES.find(v => v.key === varXKey).label;
+        layout.yaxis.title = VARIABLES.find(v => v.key === varYKey).label;
+        Plotly.newPlot('correlation-chart', [trace], layout, {responsive: true});
+    };
+    
+    const run3DPlot = () => {
+        const selectedIds = getSelectedMonitorIds('analysis-monitor-filter-container');
+        const varXKey = document.getElementById('3d-var-x').value;
+        const varYKey = document.getElementById('3d-var-y').value;
+        const varZKey = document.getElementById('3d-var-z').value;
+
+        let plotData = { x: [], y: [], z: [], monitor: [] };
+        selectedIds.forEach(id => {
+            const monitorData = allMonitorsData.find(d => d.monitorInfo.id === id);
+            if (monitorData) {
+                monitorData.readings.forEach(r => {
+                    if (r.json_file[varXKey] !== undefined && r.json_file[varYKey] !== undefined && r.json_file[varZKey] !== undefined) {
+                        plotData.x.push(r.json_file[varXKey]);
+                        plotData.y.push(r.json_file[varYKey]);
+                        plotData.z.push(r.json_file[varZKey]);
+                        plotData.monitor.push(monitorData.monitorInfo.monitor_id);
+                    }
+                });
+            }
+        });
+
+        if (plotData.x.length === 0) { Plotly.purge('plot-3d'); return; }
+
+        const trace = { x: plotData.x, y: plotData.y, z: plotData.z, mode: 'markers', type: 'scatter3d', text: plotData.monitor, marker: { color: plotData.z, colorscale: 'Viridis', size: 5, colorbar: { title: VARIABLES.find(v => v.key === varZKey).label } } };
+        const layout = getPlotlyLayout(`Visualização 3D`);
+        layout.scene = {
+            xaxis: { title: VARIABLES.find(v => v.key === varXKey).label },
+            yaxis: { title: VARIABLES.find(v => v.key === varYKey).label },
+            zaxis: { title: VARIABLES.find(v => v.key === varZKey).label }
         };
-        updateTiles();
-        mapMarkers.addTo(map);
-        desktopSidebar.querySelector('.theme-btn').addEventListener('click', () => setTimeout(updateTiles, 100));
+        Plotly.newPlot('plot-3d', [trace], layout, {responsive: true});
     };
 
-    // --- Monitor Management ---
     const renderMonitorsTable = (monitors) => {
         const container = document.getElementById('monitors-list-container');
         container.innerHTML = monitors.length ? '' : '<p class="list-placeholder">Nenhum monitor cadastrado.</p>';
@@ -227,22 +472,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // --- Export Logic ---
-    const imageToBase64 = (imgElement) => {
-        return new Promise((resolve, reject) => {
-            imgElement.onerror = () => reject(new Error(`Could not load image at ${imgElement.src}`));
-            if (imgElement.complete && imgElement.naturalHeight !== 0) {
-                const canvas = document.createElement("canvas");
-                canvas.width = imgElement.naturalWidth;
-                canvas.height = imgElement.naturalHeight;
-                const ctx = canvas.getContext("2d");
-                ctx.drawImage(imgElement, 0, 0);
-                resolve(canvas.toDataURL("image/png"));
-            } else {
-                imgElement.onload = () => resolve(imageToBase64(imgElement));
-            }
-        });
-    };
+    const imageToBase64 = (imgElement) => new Promise((resolve, reject) => {
+        imgElement.onerror = () => reject(new Error(`Could not load image at ${imgElement.src}`));
+        if (imgElement.complete && imgElement.naturalHeight !== 0) {
+            const canvas = document.createElement("canvas");
+            canvas.width = imgElement.naturalWidth;
+            canvas.height = imgElement.naturalHeight;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(imgElement, 0, 0);
+            resolve(canvas.toDataURL("image/png"));
+        } else {
+            imgElement.onload = () => resolve(imageToBase64(imgElement));
+        }
+    });
     
     const loadLogosForPdf = async () => {
         try {
@@ -250,33 +492,51 @@ document.addEventListener('DOMContentLoaded', () => {
                 imageToBase64(document.getElementById('repoair-logo-pdf')),
                 imageToBase64(document.getElementById('trama-logo-pdf'))
             ]);
-        } catch (error) {
-             console.error(
-                "AVISO: Não foi possível carregar os logos para o relatório PDF. " +
-                "Verifique os seguintes pontos:\n" +
-                "1. Se os caminhos para 'repologo.png' e 'trama-logo-verde.png' em 'main-dashboard.html' estão corretos.\n" +
-                "2. Se os arquivos de imagem existem na pasta 'assets/images/'.\n" +
-                "3. Se há erros de carregamento (404 Not Found) na aba 'Rede' (Network) do console do navegador.\n" +
-                "O relatório será gerado sem os logos.",
-                error
-            );
-        }
+        } catch (error) { console.error("PDF logo loading failed.", error); }
     };
 
     const setupExportListeners = () => {
-        document.getElementById('refresh-extract-table-btn').addEventListener('click', populateExtractTable);
-        
         const getFilteredDataForExport = () => {
-            const selectedMonitors = getSelectedMonitorData('extract-monitor-filter-container');
+            const selectedMonitors = allMonitorsData.filter(d => getSelectedMonitorIds('extract-monitor-filter-container').includes(d.monitorInfo.id));
             const selectedVariables = [...document.querySelectorAll('#extract-variable-filter-container input:checked')].map(cb => ({ key: cb.value, label: cb.dataset.label }));
-            const flatData = flattenDataForExport(selectedMonitors, selectedVariables);
-            if (flatData.length === 0) {
+            
+            const flatData = [];
+            selectedMonitors.forEach(monitorData => {
+                monitorData.readings.forEach(reading => {
+                    const row = { 'Monitor ID': monitorData.monitorInfo.monitor_id, 'Timestamp': reading.json_file.Timestamp };
+                    selectedVariables.forEach(v => { row[v.label] = reading.json_file[v.key]; });
+                    flatData.push(row);
+                });
+            });
+            const sortedData = flatData.sort((a,b) => new Date(a.Timestamp) - new Date(b.Timestamp));
+
+            if (sortedData.length === 0) {
                 alert('Nenhum dado para exportar com os filtros selecionados.');
                 return null;
             }
-            return flatData;
+            return sortedData;
         };
 
+        document.getElementById('refresh-extract-table-btn').addEventListener('click', () => {
+            const container = document.getElementById('data-extract-table-container');
+            const data = getFilteredDataForExport();
+             if (!data) {
+                container.innerHTML = '<p class="list-placeholder">Nenhum dado para exibir com os filtros selecionados.</p>';
+                return;
+            }
+            const headers = Object.keys(data[0]);
+            const table = document.createElement('table');
+            table.className = 'data-table';
+            table.innerHTML = `<thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody></tbody>`;
+            const tbody = table.querySelector('tbody');
+            data.forEach(row => {
+                const tr = tbody.insertRow();
+                headers.forEach(header => tr.insertCell().textContent = row[header] !== undefined ? row[header] : 'N/A');
+            });
+            container.innerHTML = '';
+            container.appendChild(table);
+        });
+        
         document.getElementById('export-csv-btn').addEventListener('click', () => {
             const data = getFilteredDataForExport();
             if (!data) return;
@@ -299,62 +559,39 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('export-pdf-btn').addEventListener('click', () => {
             const data = getFilteredDataForExport();
             if (!data) return;
-            
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
-            
-            // Header
             if(repoairLogoBase64) doc.addImage(repoairLogoBase64, 'PNG', 14, 10, 50, 22);
             if(tramaLogoBase64) doc.addImage(tramaLogoBase64, 'PNG', doc.internal.pageSize.getWidth() - 54, 10, 40, 17);
-
             doc.setFontSize(10).text("Laboratório de Transportes e Meio Ambiente (TRAMA) - UFC", doc.internal.pageSize.getWidth() / 2, 40, { align: 'center' });
-
-            // Title
             doc.setFontSize(16).text("Relatório de Dados - Plataforma RepoAir", doc.internal.pageSize.getWidth() / 2, 50, { align: 'center' });
             doc.setFontSize(10).text(`Gerado em: ${new Date().toLocaleString()}`, doc.internal.pageSize.getWidth() / 2, 56, { align: 'center' });
-
             doc.autoTable({
-                startY: 70,
-                head: [Object.keys(data[0])],
-                body: data.map(row => Object.values(row)),
-                theme: 'striped',
-                headStyles: { fillColor: [0, 168, 107] }
+                startY: 70, head: [Object.keys(data[0])], body: data.map(row => Object.values(row)),
+                theme: 'striped', headStyles: { fillColor: [0, 168, 107] }
             });
-
             doc.save('repoair_report.pdf');
         });
     };
 
-    // --- Main Initializer ---
     const initializeDashboard = () => {
-        loadLogosForPdf(); // Load logos in the background, non-blocking
-        
+        loadLogosForPdf();
         initMap();
+
+        populateSelectWithOptions('bi-metric-selector', VARIABLES);
+        ['corr-var-x', 'corr-var-y', '3d-var-x', '3d-var-y', '3d-var-z', 'temporal-metric-selector', 'dist-metric-selector'].forEach(id => populateSelectWithOptions(id, VARIABLES));
+
+        document.getElementById('run-bi-analysis').addEventListener('click', runBIAnalysis);
+        document.getElementById('bi-metric-selector').addEventListener('change', runBIAnalysis);
+        document.getElementById('overview-monitor-filter-container').addEventListener('change', runBIAnalysis);
+        document.getElementById('run-correlation').addEventListener('click', runCorrelationAnalysis);
+        document.getElementById('run-3d-plot').addEventListener('click', run3DPlot);
+        document.getElementById('run-cycle-plot').addEventListener('click', runCyclePlot);
+        document.getElementById('temporal-monitor-selector').addEventListener('change', () => { runTimeSeriesDecomposition(); runCyclePlot(); });
+        document.getElementById('temporal-metric-selector').addEventListener('change', () => { runTimeSeriesDecomposition(); runCyclePlot(); });
+        document.getElementById('run-histogram').addEventListener('click', runHistogram);
+        document.getElementById('run-boxplot').addEventListener('click', runBoxPlot);
         
-        const chartOptions = (title) => ({
-            responsive: true, maintainAspectRatio: false,
-            scales: { x: { type: 'time', time: { tooltipFormat: 'dd/MM/yyyy HH:mm' } }, y: { title: { display: true, text: 'Valor' } } },
-            plugins: { title: { display: true, text: title, font: { size: 16 } }, legend: { display: false } }
-        });
-
-        mainChartInstance = new Chart('qualityIndexChart', { type: 'line', options: { ...chartOptions('Índice de Qualidade'), plugins: { ...chartOptions().plugins, legend: { display: true, position: 'top' } } } });
-        ['extTemp:Temperatura (°C)', 'hum:Umidade (%)', 'pm1:PM1.0 (µg/m³)', 'pm25:PM2.5 (µg/m³)', 'pm10:PM10 (µg/m³)', 'Pres:Pressão (hPa)'].forEach(item => {
-            const [key, title] = item.split(':');
-            const chartId = key.replace('ext', '').toLowerCase() + 'Chart';
-            aggregateCharts[key] = new Chart(chartId, { type: 'line', options: chartOptions(title) });
-        });
-
-        document.getElementById('apply-filters-btn').addEventListener('click', () => {
-            const selectedIds = getSelectedMonitorData('monitor-filter-container').map(d => d.monitorInfo.id);
-            const selectedMetric = document.getElementById('metric-selector').value;
-            const metricLabel = document.getElementById('metric-selector').selectedOptions[0].text;
-            updateChart(mainChartInstance, selectedIds, selectedMetric, metricLabel);
-        });
-        document.getElementById('monitor-filter-container').addEventListener('change', () => {
-            const selectedIds = getSelectedMonitorData('monitor-filter-container').map(d => d.monitorInfo.id);
-            Object.keys(aggregateCharts).forEach(key => updateChart(aggregateCharts[key], selectedIds, key));
-        });
-
         setupExportListeners();
         loadAndProcessData();
     };
@@ -365,29 +602,26 @@ document.addEventListener('DOMContentLoaded', () => {
         const monitors = await monitorsResponse.json();
         
         renderMonitorsTable(monitors);
-        populateFilters('monitor-filter-container', monitors);
-        populateFilters('extract-monitor-filter-container', monitors);
-
+        ['overview-monitor-filter-container', 'analysis-monitor-filter-container', 'extract-monitor-filter-container', 'dist-monitor-filter-container'].forEach(id => populateFilters(id, monitors));
+        ['temporal-monitor-selector', 'dist-monitor-selector'].forEach(id => populateMonitorSelect(id, monitors));
+        
         const variableContainer = document.getElementById('extract-variable-filter-container');
-        const variables = [
-            { key: 'extTemp', label: 'Temp (°C)' }, { key: 'hum', label: 'Umidade (%)' },
-            { key: 'pm1', label: 'PM1.0 (µg/m³)' }, { key: 'pm25', label: 'PM2.5 (µg/m³)' },
-            { key: 'pm10', label: 'PM10 (µg/m³)' }, { key: 'Pres', label: 'Pressão (hPa)' }
-        ];
         variableContainer.innerHTML = '';
-        variables.forEach(v => {
+        VARIABLES.forEach(v => {
             variableContainer.innerHTML += `<label class="checkbox-label"><input type="checkbox" value="${v.key}" data-label="${v.label}" checked> ${v.label}</label>`;
         });
 
         const results = await Promise.all(monitors.map(m => apiFetch(`/quality_indice_by_monitor/${m.id}`).then(res => res.ok ? res.json() : [])));
         allMonitorsData = monitors.map((m, i) => ({ monitorInfo: m, readings: results[i] || [] }));
         
-        // Initial UI population with all data
-        updateDashboardCards(allMonitorsData);
         updateMapMarkers(allMonitorsData);
-        populateExtractTable();
-        document.getElementById('apply-filters-btn').click(); 
-        document.getElementById('monitor-filter-container').dispatchEvent(new Event('change'));
+        document.getElementById('refresh-extract-table-btn').click();
+        
+        runBIAnalysis();
+        runTimeSeriesDecomposition();
+        runCyclePlot();
+        runHistogram();
+        runBoxPlot();
     };
 
     initializeDashboard();
